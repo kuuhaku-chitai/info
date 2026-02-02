@@ -1,0 +1,365 @@
+/**
+ * 空白地帯 - グローバルスタイル
+ *
+ * このCSSファイルは「空白」を主役にするための基盤。
+ * すべてのスタイリングは「存在を消す」方向に設計されている。
+ * コンテンツは空白の中に浮かび、視線はどこにも留まらない。
+ */
+
+@import "tailwindcss";
+
+/* ============================================
+   CSS Custom Properties (カスタムプロパティ)
+   ============================================ */
+
+:root {
+  /* 色彩 - 「空白」を強調するための極めて抑制されたパレット */
+  --color-void: #FAFAFA;     /* 背景の白（純白ではなく、わずかに温かみのある白） */
+  --color-ink: #1A1A1A;      /* テキストの黒（完全な黒ではなく、墨のような深い灰） */
+  --color-ghost: #BFBFBF;    /* 消えかけた文字のような淡い灰 */
+  --color-edge: #E8E8E8;     /* マスク境界線の色（ほぼ見えない） */
+  --color-critical: #8B0000; /* 危機を示す色（警告ではなく、静かな焦燥） */
+
+  /* タイポグラフィ - 存在感を消すための選択 */
+  --font-body: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+
+  /* スペーシング - 80%以上の余白を確保するための大きな値 */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 8rem;
+  --space-2xl: 12rem;
+
+  /* アニメーション - 「微弱で有機的」な動き */
+  --duration-whisper: 800ms;
+  --duration-subtle: 1200ms;
+  --duration-gentle: 2000ms;
+  --easing-organic: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --easing-dew: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 台形マスク - グリッドの「崩壊」を表現 */
+  --trapezoid-skew: 2deg;
+  --trapezoid-inset: 3%;
+}
+
+/* Tailwind v4 テーマ拡張 */
+@theme inline {
+  --color-void: var(--color-void);
+  --color-ink: var(--color-ink);
+  --color-ghost: var(--color-ghost);
+  --color-edge: var(--color-edge);
+  --color-critical: var(--color-critical);
+}
+
+/* ============================================
+   Base Styles (基本スタイル)
+   ============================================ */
+
+html {
+  /* スムーズスクロールは使用しない - 「時間の急速な経過」を避ける */
+  scroll-behavior: auto;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  font-weight: 300;
+
+  /* 「空白」を最大化するためのミニマルな余白 */
+  margin: 0;
+  padding: 0;
+
+  /* テキストレンダリングの最適化 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* オーバーフロー制御 */
+  overflow-x: hidden;
+}
+
+/* ============================================
+   Selection (テキスト選択)
+   ============================================ */
+
+::selection {
+  /* 選択時も「空白」のコンセプトを維持 */
+  background-color: var(--color-ink);
+  color: var(--color-void);
+}
+
+/* ============================================
+   Scrollbar (スクロールバー)
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-ghost);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink);
+}
+
+/* ============================================
+   Trapezoid Mask System (台形マスクシステム)
+
+   グリッドの「意図的な崩壊」を表現する。
+   完璧な矩形ではなく、わずかに歪んだ台形で
+   コンテンツを囲むことで「不完全さ」を可視化する。
+   ============================================ */
+
+.trapezoid-container {
+  position: relative;
+  /* 台形のためのパディング */
+  padding: var(--space-lg);
+}
+
+/* 上部が狭い台形マスク */
+.trapezoid-top-narrow {
+  clip-path: polygon(
+    var(--trapezoid-inset) 0%,
+    calc(100% - var(--trapezoid-inset)) 0%,
+    100% 100%,
+    0% 100%
+  );
+}
+
+/* 下部が狭い台形マスク */
+.trapezoid-bottom-narrow {
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    calc(100% - var(--trapezoid-inset)) 100%,
+    var(--trapezoid-inset) 100%
+  );
+}
+
+/* 左に傾いた台形 */
+.trapezoid-lean-left {
+  clip-path: polygon(
+    var(--trapezoid-inset) 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%
+  );
+}
+
+/* 右に傾いた台形 */
+.trapezoid-lean-right {
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - var(--trapezoid-inset)) 0%,
+    100% 100%,
+    0% 100%
+  );
+}
+
+/* ============================================
+   Content Frame (コンテンツフレーム)
+
+   コンテンツを囲む微かな境界線。
+   「存在」と「空白」の境界を示す。
+   ============================================ */
+
+.content-frame {
+  position: relative;
+  border: 1px solid var(--color-edge);
+  /* 境界線は徐々に現れる */
+  transition: border-color var(--duration-subtle) var(--easing-organic);
+}
+
+.content-frame:hover {
+  border-color: var(--color-ghost);
+}
+
+/* フレームの角を微かに欠けさせる */
+.content-frame::before,
+.content-frame::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--color-void);
+}
+
+.content-frame::before {
+  top: -1px;
+  left: -1px;
+}
+
+.content-frame::after {
+  bottom: -1px;
+  right: -1px;
+}
+
+/* ============================================
+   Typography (タイポグラフィ)
+
+   テキストは「消えかけ」の状態を基本とする。
+   重要な情報も過度に強調しない。
+   ============================================ */
+
+.text-ghost {
+  color: var(--color-ghost);
+}
+
+.text-ink {
+  color: var(--color-ink);
+}
+
+/* 微かに脈動するテキスト - カウントダウン用 */
+@keyframes pulse-whisper {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-whisper {
+  animation: pulse-whisper 4s var(--easing-organic) infinite;
+}
+
+/* 徐々に現れるテキスト */
+@keyframes fade-in-slow {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-slow {
+  animation: fade-in-slow var(--duration-gentle) var(--easing-dew) forwards;
+  opacity: 0;
+}
+
+/* ============================================
+   Particles Background (苔胞子パーティクル背景)
+
+   空間を漂う微細な粒子のためのコンテナ。
+   Canvas要素を配置するための基盤。
+   ============================================ */
+
+.particles-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  /* パーティクルは極めて薄く */
+  opacity: 0.4;
+}
+
+/* ============================================
+   Layout Utilities (レイアウトユーティリティ)
+   ============================================ */
+
+/* 80%以上の空白を確保するメインコンテンツ領域 */
+.void-embrace {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-xl);
+}
+
+/* コンテンツを画面の端に寄せる（空白を強調） */
+.hug-corner-tl {
+  position: absolute;
+  top: var(--space-lg);
+  left: var(--space-lg);
+}
+
+.hug-corner-tr {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+}
+
+.hug-corner-bl {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: var(--space-lg);
+}
+
+.hug-corner-br {
+  position: absolute;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+}
+
+/* ============================================
+   Critical State (危機状態)
+
+   残り時間が少なくなった際のスタイル。
+   派手な警告ではなく、静かな焦燥を表現。
+   ============================================ */
+
+.is-critical {
+  --color-ink: var(--color-critical);
+}
+
+.is-critical .content-frame {
+  border-color: var(--color-critical);
+  opacity: 0.6;
+}
+
+/* ============================================
+   Responsive (レスポンシブ)
+
+   モバイルでも「空白」を維持する。
+   コンテンツを詰め込まない。
+   ============================================ */
+
+@media (max-width: 768px) {
+  :root {
+    --space-lg: 2rem;
+    --space-xl: 4rem;
+    --trapezoid-inset: 2%;
+  }
+
+  body {
+    font-size: 13px;
+  }
+}
+
+/* ============================================
+   Print (印刷)
+
+   印刷時は「空白」をより強調。
+   ============================================ */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .particles-container {
+    display: none;
+  }
+}

@@ -1,0 +1,43 @@
+# 空白地帯 - Cloudflare Workers設定
+#
+# このファイルはCloudflare Workers、D1、R2の設定を定義する。
+# ローカル開発時はwranglerがD1とR2をエミュレートする。
+
+name = "kuuhaku-chitai"
+compatibility_date = "2024-01-01"
+
+# Node.js互換モード
+nodejs_compat = true
+
+# ============================================
+# D1 Database (SQLite)
+# ============================================
+[[d1_databases]]
+binding = "DB"
+database_name = "kuuhaku-chitai-db"
+database_id = "local-dev-db"  # 本番デプロイ時に置き換え
+
+# ============================================
+# R2 Bucket (Object Storage)
+# ============================================
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "kuuhaku-chitai-images"
+
+# ============================================
+# 環境変数
+# ============================================
+[vars]
+DISCORD_WEBHOOK_URL = ""  # 本番デプロイ時にシークレットとして設定
+
+# ============================================
+# ローカル開発設定
+# ============================================
+[dev]
+port = 8787
+
+# MinIO互換の設定（ローカルR2代替）
+# S3_ENDPOINT = "http://localhost:9000"
+# S3_ACCESS_KEY = "minioadmin"
+# S3_SECRET_KEY = "minioadmin"
+# S3_BUCKET = "kuuhaku-chitai-images"
