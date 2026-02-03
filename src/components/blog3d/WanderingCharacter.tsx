@@ -134,16 +134,52 @@ export function WanderingCharacter({
     const pos = rigidBodyRef.current.translation();
 
     // 境界チェック: 壁に近づいたら目標角度を調整
+    // 境界チェック: 壁に近づいたら目標角度を調整（反射させる）
     const wallMargin = 1.0;
+    let normalX = 0;
+    let normalZ = 0;
+    let isNearWall = false;
+
     if (pos.x < boundaryX[0] + wallMargin) {
-      targetAngleRef.current = 0; // 右へ向かわせる
+      normalX = 1; // 右へ押し返す
+      isNearWall = true;
     } else if (pos.x > boundaryX[1] - wallMargin) {
-      targetAngleRef.current = Math.PI; // 左へ向かわせる
+      normalX = -1; // 左へ押し返す
+      isNearWall = true;
     }
+
     if (pos.z < boundaryZ[0] + wallMargin * 0.5) {
-      targetAngleRef.current = Math.PI / 2; // 奥へ向かわせる
+      normalZ = 1; // 手前へ押し返す（Z増方向）
+      isNearWall = true;
     } else if (pos.z > boundaryZ[1] - wallMargin * 0.5) {
-      targetAngleRef.current = -Math.PI / 2; // 手前へ向かわせる
+      normalZ = -1; // 奥へ押し返す（Z減方向）
+      isNearWall = true;
+    }
+
+    // 壁の近くにいて、かつ壁に向かっている場合に方向転換
+    if (isNearWall) {
+      // 現在の進行方向ベクトル（モデルの前方）
+      // GLBモデルの前方が -Z なので、-sin, -cos
+      const currentDirX = -Math.sin(currentAngleRef.current);
+      const currentDirZ = -Math.cos(currentAngleRef.current);
+
+      // 壁に向かっているかチェック（内積 < 0 なら壁に向かっている）
+      // 法線は内向きなので、進行方向と逆向き成分があれば衝突コース
+      const dot = currentDirX * normalX + currentDirZ * normalZ;
+
+      // 壁に向かって進んでいる場合のみ、目標角度を変更（壁から離れる方向ならそのまま）
+      if (dot < -0.1) { // -0.1はマージン（ほぼ平行なら無視）
+        // 反射ベクトル R = D - 2(D·N)N
+        const reflectX = currentDirX - 2 * dot * normalX;
+        const reflectZ = currentDirZ - 2 * dot * normalZ;
+
+        // 反射ベクトルの角度を計算
+        // facingX = -sin(theta), facingZ = -cos(theta)
+        // theta = atan2(-facingX, -facingZ)
+        // 少しノイズを加えて「きっかり反射」しすぎないようにする
+        const bounceNoise = (noiseValue * 0.5);
+        targetAngleRef.current = Math.atan2(-reflectX, -reflectZ) + bounceNoise;
+      }
     }
 
     // ===== 生物学的に自然な動作の実装 =====
