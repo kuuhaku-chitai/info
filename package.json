@@ -1,0 +1,43 @@
+{
+  "name": "kuuhaku-chitai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "db:migrate": "node scripts/migrate.js",
+    "setup": "npm run docker:up && npm run db:migrate",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/rapier": "^2.2.0",
+    "better-sqlite3": "^12.6.2",
+    "framer-motion": "^12.29.2",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.980.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.182.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wrangler": "^4.61.1"
+  }
+}
