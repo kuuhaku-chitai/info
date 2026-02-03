@@ -44,7 +44,7 @@ function PostUI({ post, onClick }: PostUIProps) {
         // 各ポストで異なる傾きを持たせ、不均質さを演出
         clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)',
         background: '#FFFFFF',
-        border: '1px solid #1A1A1A',
+        border: '1px solid #fcfcfc',
         padding: '16px 20px',
         width: '240px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
