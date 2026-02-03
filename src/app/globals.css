@@ -14,11 +14,16 @@
 
 :root {
   /* 色彩 - 「空白」を強調するための極めて抑制されたパレット */
-  --color-void: #FAFAFA;     /* 背景の白（純白ではなく、わずかに温かみのある白） */
-  --color-ink: #1A1A1A;      /* テキストの黒（完全な黒ではなく、墨のような深い灰） */
-  --color-ghost: #BFBFBF;    /* 消えかけた文字のような淡い灰 */
-  --color-edge: #E8E8E8;     /* マスク境界線の色（ほぼ見えない） */
-  --color-critical: #8B0000; /* 危機を示す色（警告ではなく、静かな焦燥） */
+  --color-void: #FAFAFA;
+  /* 背景の白（純白ではなく、わずかに温かみのある白） */
+  --color-ink: #1A1A1A;
+  /* テキストの黒（完全な黒ではなく、墨のような深い灰） */
+  --color-ghost: #BFBFBF;
+  /* 消えかけた文字のような淡い灰 */
+  --color-edge: #E8E8E8;
+  /* マスク境界線の色（ほぼ見えない） */
+  --color-critical: #8B0000;
+  /* 危機を示す色（警告ではなく、静かな焦燥） */
 
   /* タイポグラフィ - 存在感を消すための選択 */
   --font-body: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
@@ -132,42 +137,34 @@ body {
 
 /* 上部が狭い台形マスク */
 .trapezoid-top-narrow {
-  clip-path: polygon(
-    var(--trapezoid-inset) 0%,
-    calc(100% - var(--trapezoid-inset)) 0%,
-    100% 100%,
-    0% 100%
-  );
+  clip-path: polygon(var(--trapezoid-inset) 0%,
+      calc(100% - var(--trapezoid-inset)) 0%,
+      100% 100%,
+      0% 100%);
 }
 
 /* 下部が狭い台形マスク */
 .trapezoid-bottom-narrow {
-  clip-path: polygon(
-    0% 0%,
-    100% 0%,
-    calc(100% - var(--trapezoid-inset)) 100%,
-    var(--trapezoid-inset) 100%
-  );
+  clip-path: polygon(0% 0%,
+      100% 0%,
+      calc(100% - var(--trapezoid-inset)) 100%,
+      var(--trapezoid-inset) 100%);
 }
 
 /* 左に傾いた台形 */
 .trapezoid-lean-left {
-  clip-path: polygon(
-    var(--trapezoid-inset) 0%,
-    100% 0%,
-    100% 100%,
-    0% 100%
-  );
+  clip-path: polygon(var(--trapezoid-inset) 0%,
+      100% 0%,
+      100% 100%,
+      0% 100%);
 }
 
 /* 右に傾いた台形 */
 .trapezoid-lean-right {
-  clip-path: polygon(
-    0% 0%,
-    calc(100% - var(--trapezoid-inset)) 0%,
-    100% 100%,
-    0% 100%
-  );
+  clip-path: polygon(0% 0%,
+      calc(100% - var(--trapezoid-inset)) 0%,
+      100% 100%,
+      0% 100%);
 }
 
 /* ============================================
@@ -225,9 +222,12 @@ body {
 
 /* 微かに脈動するテキスト - カウントダウン用 */
 @keyframes pulse-whisper {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.7;
   }
+
   50% {
     opacity: 1;
   }
@@ -243,6 +243,7 @@ body {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -416,12 +417,10 @@ body {
   right: -5%;
   width: 40vw;
   height: 40vw;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 200, 120, 0.25) 0%,
-    rgba(255, 180, 100, 0.12) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(255, 200, 120, 0.25) 0%,
+      rgba(255, 180, 100, 0.12) 40%,
+      transparent 70%);
   animation: flare-drift-1 60s var(--easing-organic) infinite;
 }
 
@@ -431,28 +430,31 @@ body {
   left: -10%;
   width: 35vw;
   height: 35vw;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 180, 160, 0.2) 0%,
-    rgba(255, 160, 140, 0.1) 50%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(255, 180, 160, 0.2) 0%,
+      rgba(255, 160, 140, 0.1) 50%,
+      transparent 70%);
   animation: flare-drift-2 80s var(--easing-organic) infinite;
 }
 
 @keyframes flare-drift-1 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
+
   25% {
     transform: translate(-3%, 5%) scale(1.05);
     opacity: 1;
   }
+
   50% {
     transform: translate(-5%, 3%) scale(1.1);
     opacity: 0.8;
   }
+
   75% {
     transform: translate(-2%, 1%) scale(1.02);
     opacity: 0.9;
@@ -460,14 +462,18 @@ body {
 }
 
 @keyframes flare-drift-2 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
+
   33% {
     transform: translate(5%, -3%) scale(1.08);
     opacity: 1;
   }
+
   66% {
     transform: translate(2%, -5%) scale(1.03);
     opacity: 0.7;
@@ -484,14 +490,12 @@ body {
 
 .cloud {
   position: absolute;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(160, 165, 175, 0.15) 20%,
-    rgba(140, 145, 155, 0.22) 50%,
-    rgba(160, 165, 175, 0.15) 80%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(160, 165, 175, 0.15) 20%,
+      rgba(140, 145, 155, 0.22) 50%,
+      rgba(160, 165, 175, 0.15) 80%,
+      transparent 100%);
   border-radius: 50%;
   filter: blur(30px);
   will-change: transform;
@@ -527,6 +531,7 @@ body {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(150vw);
   }
@@ -536,6 +541,7 @@ body {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(160vw);
   }
@@ -545,6 +551,7 @@ body {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(150vw);
   }
@@ -563,13 +570,11 @@ body {
   top: -10%;
   width: 1px;
   height: 35px;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(120, 140, 160, 0.35) 30%,
-    rgba(100, 120, 145, 0.5) 70%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(120, 140, 160, 0.35) 30%,
+      rgba(100, 120, 145, 0.5) 70%,
+      transparent 100%);
   transform: rotate(15deg);
   animation: rain-fall linear infinite;
   will-change: transform;
@@ -580,12 +585,15 @@ body {
     transform: translateY(-10vh) rotate(15deg);
     opacity: 0;
   }
+
   10% {
     opacity: 0.8;
   }
+
   90% {
     opacity: 0.8;
   }
+
   100% {
     transform: translateY(110vh) rotate(15deg);
     opacity: 0;
@@ -607,12 +615,10 @@ body {
   width: 100%;
   height: 100%;
   /* 青白い光 - 白背景でも視認できる */
-  background: linear-gradient(
-    135deg,
-    rgba(200, 210, 230, 0.3) 0%,
-    rgba(180, 195, 220, 0.15) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(200, 210, 230, 0.3) 0%,
+      rgba(180, 195, 220, 0.15) 50%,
+      transparent 100%);
   opacity: 0;
   /* 3分ごとに一瞬だけ明滅 */
   animation: lightning-strike 180s ease infinite;
@@ -620,20 +626,27 @@ body {
 }
 
 @keyframes lightning-strike {
-  0%, 99%, 100% {
+
+  0%,
+  99%,
+  100% {
     opacity: 0;
   }
+
   /* 一瞬だけフラッシュ */
   99.05% {
     opacity: 1;
   }
+
   99.1% {
     opacity: 0;
   }
+
   /* 微かな余韻 */
   99.15% {
     opacity: 0.5;
   }
+
   99.2% {
     opacity: 0;
   }
@@ -665,15 +678,19 @@ body {
     transform: translateY(-5vh) translateX(0);
     opacity: 0;
   }
+
   5% {
     opacity: 1;
   }
+
   50% {
     transform: translateY(50vh) translateX(var(--horizontal-drift));
   }
+
   95% {
     opacity: 1;
   }
+
   100% {
     transform: translateY(105vh) translateX(calc(var(--horizontal-drift) * 2));
     opacity: 0;
@@ -685,32 +702,33 @@ body {
    -------------------------------------------- */
 
 @media (max-width: 768px) {
-  /* モバイルでは演出を控えめに（パフォーマンス重視） */
+
+  /* モバイルでは演出を更に控えめに */
   .weather-layer {
-    opacity: 0.85;
+    opacity: 0.7;
   }
 
   /* フレアのサイズを縮小 */
   .sunny-flare-1 {
     width: 50vw;
     height: 50vw;
-    filter: blur(50px);
+    filter: blur(60px);
   }
 
   .sunny-flare-2 {
     width: 45vw;
     height: 45vw;
-    filter: blur(45px);
+    filter: blur(50px);
   }
 
   /* 雲のサイズを調整 */
   .cloud {
-    filter: blur(25px);
+    filter: blur(30px);
   }
 
-  /* 雨粒を短く */
+  /* 雨粒の数を減らす効果（CSSでは制御できないが、描画負荷軽減） */
   .raindrop {
-    height: 25px;
+    height: 20px;
   }
 
   /* 雪片をシンプルに */
