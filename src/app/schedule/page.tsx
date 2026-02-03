@@ -8,6 +8,7 @@
 
 import Link from 'next/link';
 import { fetchPostsByCategory } from '@/lib/actions';
+import { MobileMenu } from '@/components/ui/MobileMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,8 +111,8 @@ export default async function SchedulePage() {
         )}
       </div>
 
-      {/* 戻るリンク */}
-      <nav className="hug-corner-bl">
+      {/* 戻るリンク - モバイルでは非表示 */}
+      <nav className="hug-corner-bl hidden md:block">
         <Link
           href="/"
           className="text-xs text-ghost hover:text-ink transition-colors duration-[var(--duration-subtle)]"
@@ -119,6 +120,8 @@ export default async function SchedulePage() {
           ← 戻る
         </Link>
       </nav>
+
+      <MobileMenu />
     </div>
   );
 }

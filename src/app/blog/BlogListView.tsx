@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import type { Post } from '@/types';
 import { Pagination } from '@/components/Pagination';
+import { MobileMenu } from '@/components/ui/MobileMenu';
 
 interface BlogListViewProps {
   posts: Post[];
@@ -107,8 +108,8 @@ export function BlogListView({ posts }: BlogListViewProps) {
         )}
       </main>
 
-      {/* 戻るリンク */}
-      <nav className="hug-corner-bl">
+      {/* 戻るリンク - モバイルでは非表示 */}
+      <nav className="hug-corner-bl hidden md:block">
         <Link
           href="/"
           className="text-xs text-ghost hover:text-ink transition-colors duration-[var(--duration-subtle)]"
@@ -116,6 +117,8 @@ export function BlogListView({ posts }: BlogListViewProps) {
           ← 戻る
         </Link>
       </nav>
+
+      <MobileMenu />
     </div>
   );
 }

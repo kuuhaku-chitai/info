@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { fetchPostById } from '@/lib/actions';
+import { MobileMenu } from '@/components/ui/MobileMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export default async function PostPage({ params }: PageProps) {
   const backLabel = post.category === 'event' ? '予定' : '記録';
 
   return (
-    <div className="min-h-screen bg-[var(--color-void)] py-16 px-8">
+    <div className="min-h-screen bg-[var(--color-void)] pt-16 pb-32 px-8">
       {/* ヘッダー */}
       <header className="max-w-2xl mx-auto mb-16">
         <Link
@@ -184,7 +185,7 @@ export default async function PostPage({ params }: PageProps) {
       </article>
 
       {/* フッターナビ */}
-      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge">
+      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
         <Link
           href={backLink}
           className="text-xs text-ghost hover:text-ink transition-colors"
@@ -192,6 +193,8 @@ export default async function PostPage({ params }: PageProps) {
           ← {backLabel}に戻る
         </Link>
       </nav>
+
+      <MobileMenu />
     </div>
   );
 }

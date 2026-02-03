@@ -14,6 +14,7 @@
 import { Suspense } from 'react';
 import { CountdownServer } from '@/components/countdown';
 import { WeatherAtmosphereClient } from '@/components/weather';
+import { MobileMenu } from '@/components/ui/MobileMenu';
 
 export default function HomePage() {
   return (
@@ -60,7 +61,12 @@ export default function HomePage() {
         ナビゲーション - 左下隅に配置
         最小限のリンクのみ。押し付けがましくない。
       */}
-      <nav className="hug-corner-bl z-10">
+      {/*
+        ナビゲーション - 左下隅に配置
+        最小限のリンクのみ。押し付けがましくない。
+        モバイルではメニュー内に移動するため非表示。
+      */}
+      <nav className="hug-corner-bl z-10 hidden md:block">
         <ul className="flex gap-4 text-xs text-ghost">
           <li>
             <a
@@ -80,6 +86,9 @@ export default function HomePage() {
           </li>
         </ul>
       </nav>
+
+      {/* モバイルメニュー */}
+      <MobileMenu />
     </div>
   );
 }
