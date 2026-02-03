@@ -3,18 +3,20 @@
 /**
  * WanderingCharacter - 徘徊するキャラクター
  *
- * sheep.glb / sheep_person.glb を読み込み、
+ * sheepWithAnimation.glb / sheep_personWithAnimation.glb を読み込み、
  * 空間をゆっくりと徘徊するキャラクターを実装。
  * Kinematicコライダーを持ち、記事に「ぶつかる」ことで揺らす。
  *
  * 動きは「微弱で有機的」- 急な方向転換やスピードの変化は禁止。
+ * 歩行アニメーションは24フレームで再生。
  */
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { useGLTF, useAnimations } from '@react-three/drei';
 import { RigidBody, RapierRigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createNoise2D } from 'simplex-noise';
 import { FLOOR_BOUNDS, FLOOR_Y } from './floorConfig';
 
@@ -32,7 +34,7 @@ const DEFAULT_CONFIG: WanderConfig = {
 };
 
 interface WanderingCharacterProps {
-  modelPath: '/assets/glb/sheep.glb' | '/assets/glb/sheep_person.glb';
+  modelPath: '/assets/glb/sheepWithAnimation.glb' | '/assets/glb/sheep_personWithAnimation.glb';
   initialPosition?: [number, number, number];
   seed?: number;
   config?: Partial<WanderConfig>;
@@ -52,7 +54,7 @@ export function WanderingCharacter({
 }: WanderingCharacterProps) {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   const rigidBodyRef = useRef<RapierRigidBody>(null);
-  const groupRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null!);
 
   // 床の上に立つY位置を計算
   // FLOOR_Y は床面の位置（-2）、キャラクターはその上に立つ
@@ -62,11 +64,44 @@ export function WanderingCharacter({
   const boundaryX: [number, number] = [FLOOR_BOUNDS.x.min, FLOOR_BOUNDS.x.max];
   const boundaryZ: [number, number] = [FLOOR_BOUNDS.z.min, FLOOR_BOUNDS.z.max];
 
-  // GLTFモデルをロード
-  const { scene } = useGLTF(modelPath);
+  // GLTFモデルとアニメーションをロード
+  const { scene, animations } = useGLTF(modelPath);
 
-  // モデルのクローンを作成（複数インスタンス対応）
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  // SkeletonUtilsを使用してSkinnedMeshを正しくクローン
+  const clonedScene = useMemo(() => {
+    const clone = SkeletonUtils.clone(scene);
+    // frustumCulledを無効化（カメラ外でも表示を維持）
+    clone.traverse((child) => {
+      if ((child as THREE.SkinnedMesh).isSkinnedMesh) {
+        (child as THREE.SkinnedMesh).frustumCulled = false;
+      }
+    });
+    return clone;
+  }, [scene]);
+
+  // アニメーションの設定（groupRefを渡す）
+  const { actions, mixer } = useAnimations(animations, groupRef);
+
+  // アニメーションを開始
+  useEffect(() => {
+    if (actions && Object.keys(actions).length > 0) {
+      // 最初のアニメーション（歩行アニメーション）を取得
+      const actionName = Object.keys(actions)[0];
+      const action = actions[actionName];
+      if (action) {
+        action.reset();
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.play();
+      }
+    }
+
+    return () => {
+      // クリーンアップ
+      if (mixer) {
+        mixer.stopAllAction();
+      }
+    };
+  }, [actions, mixer]);
 
   // ノイズによる有機的な徘徊
   const noise2D = useMemo(() => createNoise2D(), []);
@@ -156,6 +191,18 @@ export function WanderingCharacter({
     newX = Math.max(boundaryX[0], Math.min(boundaryX[1], newX));
     newZ = Math.max(boundaryZ[0], Math.min(boundaryZ[1], newZ));
 
+    // アニメーション速度の同期
+    if (actions) {
+      const actionName = Object.keys(actions)[0];
+      const action = actions[actionName];
+      if (action) {
+        // 例: 基本速度 0.3 に対して移動速度を反映させる
+        // 立ち止まっている時でも少し動かしたい場合は 0.2 + ... のように底上げする
+        const baseSpeed = 0.4;
+        action.timeScale = (effectiveSpeed / mergedConfig.speed) * baseSpeed;
+      }
+    }
+
     // 位置を更新
     rigidBodyRef.current.setNextKinematicTranslation({
       x: newX,
@@ -182,6 +229,6 @@ export function WanderingCharacter({
   );
 }
 
-// モデルのプリロード
-useGLTF.preload('/assets/glb/sheep.glb');
-useGLTF.preload('/assets/glb/sheep_person.glb');
+// モデルのプリロード（アニメーション付きバージョン）
+useGLTF.preload('/assets/glb/sheepWithAnimation.glb');
+useGLTF.preload('/assets/glb/sheep_personWithAnimation.glb');

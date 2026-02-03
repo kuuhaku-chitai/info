@@ -119,14 +119,14 @@ function SceneContent({
 
         {/* 徘徊キャラクター: 空間を横切り、記事を揺らす */}
         <WanderingCharacter
-          modelPath="/assets/glb/sheep.glb"
+          modelPath="/assets/glb/sheepWithAnimation.glb"
           seed={10}
           initialPosition={[-4, 0, 0]}
           size={1.0}
           yOffset={0}
         />
         <WanderingCharacter
-          modelPath="/assets/glb/sheep_person.glb"
+          modelPath="/assets/glb/sheep_personWithAnimation.glb"
           seed={42}
           initialPosition={[3, 0, 0.5]}
           size={0.2}
