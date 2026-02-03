@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { fetchPostById } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,71 +107,7 @@ export default async function PostPage({ params }: PageProps) {
         </h1>
 
         {/* 本文 */}
-        <div className="prose-void">
-          {post.markdown.split('\n').map((line, index) => {
-            // 空行
-            if (!line.trim()) {
-              return <br key={index} />;
-            }
-            // 見出し
-            if (line.startsWith('# ')) {
-              return (
-                <h2
-                  key={index}
-                  className="text-base font-light text-ink mt-12 mb-4 tracking-wide"
-                >
-                  {line.slice(2)}
-                </h2>
-              );
-            }
-            if (line.startsWith('## ')) {
-              return (
-                <h3
-                  key={index}
-                  className="text-sm font-medium text-ink mt-8 mb-3 tracking-wide"
-                >
-                  {line.slice(3)}
-                </h3>
-              );
-            }
-            // 画像
-            const imageMatch = line.match(/!\[.*?\]\((.*?)\)/);
-            if (imageMatch) {
-              return (
-                <div key={index} className="my-8">
-                  <Image
-                    src={imageMatch[1]}
-                    alt=""
-                    width={800}
-                    height={600}
-                    className="w-full h-auto"
-                    unoptimized
-                  />
-                </div>
-              );
-            }
-            // 引用
-            if (line.startsWith('> ')) {
-              return (
-                <blockquote
-                  key={index}
-                  className="border-l-2 border-ghost pl-4 my-4 text-ghost italic"
-                >
-                  {line.slice(2)}
-                </blockquote>
-              );
-            }
-            // 通常のパラグラフ
-            return (
-              <p
-                key={index}
-                className="text-sm text-ink leading-[2] mb-4 font-light"
-              >
-                {line}
-              </p>
-            );
-          })}
-        </div>
+        <MarkdownRenderer content={post.markdown} />
 
         {/* タグ */}
         {post.tags.length > 0 && (
