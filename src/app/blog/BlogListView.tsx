@@ -11,7 +11,8 @@
  * ページネーション: 5件/10件/50件から選択可能（デフォルト: 5件）
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { Post } from '@/types';
 
@@ -24,14 +25,35 @@ interface BlogListViewProps {
 }
 
 export function BlogListView({ posts }: BlogListViewProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState<ItemsPerPage>(5);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const categoryLabels: Record<string, string> = {
     article: '記事',
     note: 'メモ',
     event: 'イベント',
   };
+
+  // URLから表示件数を取得（デフォルト: 5）
+  const itemsPerPage = useMemo<ItemsPerPage>(() => {
+    const limitParam = searchParams.get('limit');
+    if (!limitParam) return 5;
+
+    const limit = parseInt(limitParam, 10);
+    // 有効なオプションかチェック（型安全のため）
+    const isValidOption = ITEMS_PER_PAGE_OPTIONS.some(opt => opt === limit);
+    return isValidOption ? (limit as ItemsPerPage) : 5;
+  }, [searchParams]);
+
+  // URLから現在のページを取得（デフォルト: 1）
+  const currentPage = useMemo(() => {
+    const pageParam = searchParams.get('page');
+    if (!pageParam) return 1;
+
+    const page = parseInt(pageParam, 10);
+    return Math.max(1, page);
+  }, [searchParams]);
 
   // 総ページ数
   const totalPages = useMemo(
@@ -46,16 +68,23 @@ export function BlogListView({ posts }: BlogListViewProps) {
     return posts.slice(startIndex, endIndex);
   }, [posts, currentPage, itemsPerPage]);
 
-  // 表示件数変更時にページをリセット
+  // 表示件数変更時にページをリセットしてURL更新
   const handleItemsPerPageChange = useCallback((newItemsPerPage: ItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  }, []);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('limit', newItemsPerPage.toString());
+    params.set('page', '1'); // 件数変更時は1ページ目に戻す
 
-  // ページ変更
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [router, pathname, searchParams]);
+
+  // ページ変更時にURL更新
   const goToPage = useCallback((page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  }, [totalPages]);
+    const targetPage = Math.max(1, Math.min(page, totalPages));
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', targetPage.toString());
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [router, pathname, searchParams, totalPages]);
 
   return (
     <div className="min-h-screen bg-[var(--color-void)]">
@@ -93,11 +122,10 @@ export function BlogListView({ posts }: BlogListViewProps) {
                   <button
                     key={option}
                     onClick={() => handleItemsPerPageChange(option)}
-                    className={`px-2 py-1 text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${
-                      itemsPerPage === option
-                        ? 'text-ink border-b border-[var(--color-edge)]'
-                        : 'text-ghost opacity-50 hover:opacity-100'
-                    }`}
+                    className={`px-2 py-1 text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${itemsPerPage === option
+                      ? 'text-ink border-b border-[var(--color-edge)]'
+                      : 'text-ghost opacity-50 hover:opacity-100'
+                      }`}
                   >
                     {option}
                   </button>
@@ -156,11 +184,10 @@ export function BlogListView({ posts }: BlogListViewProps) {
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${
-                    currentPage === 1
-                      ? 'text-ghost opacity-20 cursor-not-allowed'
-                      : 'text-ghost hover:text-ink'
-                  }`}
+                  className={`text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${currentPage === 1
+                    ? 'text-ghost opacity-20 cursor-not-allowed'
+                    : 'text-ghost hover:text-ink'
+                    }`}
                 >
                   ← 前へ
                 </button>
@@ -194,11 +221,10 @@ export function BlogListView({ posts }: BlogListViewProps) {
                       <button
                         key={page}
                         onClick={() => goToPage(page)}
-                        className={`w-6 h-6 text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${
-                          currentPage === page
-                            ? 'text-ink border border-[var(--color-edge)]'
-                            : 'text-ghost opacity-50 hover:opacity-100'
-                        }`}
+                        className={`w-6 h-6 text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${currentPage === page
+                          ? 'text-ink border border-[var(--color-edge)]'
+                          : 'text-ghost opacity-50 hover:opacity-100'
+                          }`}
                         style={{
                           clipPath: 'polygon(5% 0%, 100% 5%, 95% 100%, 0% 95%)',
                         }}
@@ -213,11 +239,10 @@ export function BlogListView({ posts }: BlogListViewProps) {
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${
-                    currentPage === totalPages
-                      ? 'text-ghost opacity-20 cursor-not-allowed'
-                      : 'text-ghost hover:text-ink'
-                  }`}
+                  className={`text-[10px] tracking-wider transition-all duration-[var(--duration-subtle)] ${currentPage === totalPages
+                    ? 'text-ghost opacity-20 cursor-not-allowed'
+                    : 'text-ghost hover:text-ink'
+                    }`}
                 >
                   次へ →
                 </button>

@@ -18,7 +18,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import type { Post } from '@/types';
 import { HangingPost } from './HangingPost';
@@ -177,7 +177,18 @@ interface Blog3DSceneProps {
 
 export function Blog3DScene({ posts }: Blog3DSceneProps) {
   const router = useRouter();
-  const [currentPage, setCurrentPage] = useState(0);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // URLクエリパラメータから現在のページを取得（デフォルトは1ページ目=インデックス0）
+  // searchParams.get('page') は 1-based なので 0-based に変換
+  const currentPage = useMemo(() => {
+    const pageParam = searchParams.get('page');
+    // pageParamが存在しない場合は0、存在する場合はパースして-1する（最小値は0）
+    const page = pageParam ? parseInt(pageParam, 10) - 1 : 0;
+    return Math.max(0, page);
+  }, [searchParams]);
+
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [postScale, setPostScale] = useState(POST_SCALE_DEFAULT);
 
@@ -202,8 +213,13 @@ export function Blog3DScene({ posts }: Blog3DSceneProps) {
   );
 
   const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
+    // ページ変更時にURLを更新（スクロール位置は維持）
+    // 内部的には0-basedだが、URLパラメータは1-basedで保存
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', (page + 1).toString());
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [router, pathname, searchParams]);
 
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
