@@ -19,6 +19,7 @@ import {
 } from '@react-three/rapier';
 import * as THREE from 'three';
 import type { Post } from '@/types';
+import { FLOOR_BOUNDS, CEILING_Y } from './floorConfig';
 
 // ポストUI: 3D空間内でHTMLをレンダリング
 // コンセプト: 「都市に吊るされた思考の断片」
@@ -41,7 +42,7 @@ function PostUI({ post, onClick }: PostUIProps) {
       style={{
         // 「未完の台形」を clip-path で表現
         // 各ポストで異なる傾きを持たせ、不均質さを演出
-        clipPath: 'polygon(2% 0%, 100% 3%, 98% 100%, 0% 97%)',
+        clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)',
         background: '#FFFFFF',
         border: '1px solid #1A1A1A',
         padding: '16px 20px',
@@ -117,6 +118,8 @@ interface HangingPostProps {
   onPostClick: (post: Post) => void;
   // 外部から風の力を受け取る
   windForce?: THREE.Vector3;
+  // 記事カードのスケール（1.0がデフォルト）
+  scale?: number;
 }
 
 export function HangingPost({
@@ -125,6 +128,7 @@ export function HangingPost({
   totalPosts,
   onPostClick,
   windForce,
+  scale = 1.0,
 }: HangingPostProps) {
   // 非nullアサーションで初期化（Rapierの要件）
   const bodyRef = useRef<RapierRigidBody>(null!);
@@ -137,28 +141,52 @@ export function HangingPost({
     return hash / 1000;
   }, [post.id]);
 
-  // 水平配置: 画面幅に応じて分散
-  const spreadWidth = 6;
-  const xOffset = useMemo(() => {
-    if (totalPosts === 1) return 0;
-    const baseX = ((index / (totalPosts - 1)) - 0.5) * spreadWidth;
-    // 個体差による微小なずれ
-    return baseX + (Math.sin(seed * 10) * 0.3);
-  }, [index, totalPosts, seed, spreadWidth]);
+  // 3D空間での配置計算: 床の境界全体を使い、ランダムに配置
+  // 境界はfloorConfigで定義（マージン込み）
+  const { xOffset, zOffset, ropeLength } = useMemo(() => {
+    // 記事が1つしかない場合は中心に配置（見つけやすくするため）
+    if (totalPosts === 1) {
+      const centerX = (FLOOR_BOUNDS.x.min + FLOOR_BOUNDS.x.max) / 2;
+      const centerZ = (FLOOR_BOUNDS.z.min + FLOOR_BOUNDS.z.max) / 2;
+      return {
+        xOffset: centerX,
+        zOffset: centerZ,
+        ropeLength: 2.5, // 中程度の紐の長さ
+      };
+    }
 
-  // 紐の長さ: 2.0〜3.5の範囲でランダム
-  const ropeLength = useMemo(() => 2.0 + (seed % 1) * 1.5, [seed]);
+    // シード値から決定論的なランダム値を生成
+    // これにより同じ記事は常に同じ位置に配置される
+    const randomX = (Math.sin(seed * 17 + index * 7) + 1) / 3; // 0〜1
+    const randomZ = (Math.cos(seed * 23 + index * 11) + 1) / 2; // 0〜1
+    const randomRope = (Math.sin(seed * 31 + index * 13) + 1) / 2; // 0〜1
+
+    // X座標: 床の幅全体にランダム配置（マージン内）
+    const xPos = FLOOR_BOUNDS.x.min + randomX * (FLOOR_BOUNDS.x.max - FLOOR_BOUNDS.x.min);
+
+    // Z座標: 床の奥行き全体にランダム配置（マージン内）
+    const zPos = FLOOR_BOUNDS.z.min + randomZ * (FLOOR_BOUNDS.z.max - FLOOR_BOUNDS.z.min);
+
+    // 紐の長さ: 1.5〜4.0の範囲でランダム（高さの変化をより大きく）
+    const ropeLengthCalc = 1.5 + randomRope * 2.5;
+
+    return {
+      xOffset: xPos,
+      zOffset: zPos,
+      ropeLength: ropeLengthCalc,
+    };
+  }, [index, seed, totalPosts]);
 
   // アンカー（天井の固定点）位置
   const anchorPosition = useMemo(
-    () => new THREE.Vector3(xOffset, 4, (seed % 0.5) - 0.25),
-    [xOffset, seed]
+    () => new THREE.Vector3(xOffset, CEILING_Y, zOffset),
+    [xOffset, zOffset]
   );
 
   // ボディの初期位置（アンカーから紐の長さ分下）
   const bodyInitialPosition = useMemo(
-    () => new THREE.Vector3(xOffset, 4 - ropeLength, (seed % 0.5) - 0.25),
-    [xOffset, ropeLength, seed]
+    () => new THREE.Vector3(xOffset, CEILING_Y - ropeLength, zOffset),
+    [xOffset, ropeLength, zOffset]
   );
 
   // Spherical Joint: 天井の固定点と記事ボディを接続
@@ -219,10 +247,15 @@ export function HangingPost({
         <BallCollider args={[0.8]} />
 
         {/* HTML UI: 3D空間に配置されたブログカード */}
+        {/* scaleプロパティでポリゴンと文字サイズを比率維持で拡大縮小 */}
+        {/* Htmlコンポーネントのscaleプロパティを使用することで、div領域も含めて正しくスケーリング */}
         <Html
           transform
           occlude="blending"
-          style={{ pointerEvents: 'auto' }}
+          scale={scale}
+          style={{
+            pointerEvents: 'auto',
+          }}
           center
         >
           <PostUI post={post} onClick={handleClick} />

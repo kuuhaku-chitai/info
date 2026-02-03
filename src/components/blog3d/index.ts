@@ -9,3 +9,6 @@ export { Blog3DScene } from './Blog3DScene';
 export { HangingPost } from './HangingPost';
 export { WindSystem, useWind } from './WindSystem';
 export { WanderingCharacter } from './WanderingCharacter';
+export { PaginationDoor } from './PaginationDoor';
+export { ZoomController } from './ZoomController';
+export * from './floorConfig';

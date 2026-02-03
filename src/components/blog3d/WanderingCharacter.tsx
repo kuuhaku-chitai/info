@@ -10,12 +10,13 @@
  * 動きは「微弱で有機的」- 急な方向転換やスピードの変化は禁止。
  */
 
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { RigidBody, RapierRigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
+import { FLOOR_BOUNDS, FLOOR_Y } from './floorConfig';
 
 // 徘徊の設定
 interface WanderConfig {
@@ -23,19 +24,11 @@ interface WanderConfig {
   speed: number;
   // 方向転換の滑らかさ
   turnSpeed: number;
-  // 徘徊範囲
-  boundaryX: [number, number];
-  boundaryZ: [number, number];
-  // Y位置（地面）
-  groundY: number;
 }
 
 const DEFAULT_CONFIG: WanderConfig = {
   speed: 0.3,
   turnSpeed: 0.5,
-  boundaryX: [-5, 5],
-  boundaryZ: [-2, 2],
-  groundY: -1.5,
 };
 
 interface WanderingCharacterProps {
@@ -43,6 +36,10 @@ interface WanderingCharacterProps {
   initialPosition?: [number, number, number];
   seed?: number;
   config?: Partial<WanderConfig>;
+  // モデルのスケール（デフォルト: 0.5）
+  size?: number;
+  // Y軸オフセット（床からの高さ調整）
+  yOffset?: number;
 }
 
 export function WanderingCharacter({
@@ -50,10 +47,20 @@ export function WanderingCharacter({
   initialPosition,
   seed = 0,
   config,
+  size = 0.5,
+  yOffset = 0,
 }: WanderingCharacterProps) {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const groupRef = useRef<THREE.Group>(null);
+
+  // 床の上に立つY位置を計算
+  // FLOOR_Y は床面の位置（-2）、キャラクターはその上に立つ
+  const groundY = FLOOR_Y + 0.5 + yOffset;
+
+  // 境界設定（floorConfigから取得）
+  const boundaryX: [number, number] = [FLOOR_BOUNDS.x.min, FLOOR_BOUNDS.x.max];
+  const boundaryZ: [number, number] = [FLOOR_BOUNDS.z.min, FLOOR_BOUNDS.z.max];
 
   // GLTFモデルをロード
   const { scene } = useGLTF(modelPath);
@@ -69,14 +76,17 @@ export function WanderingCharacter({
 
   // 初期位置
   const startPosition = useMemo<[number, number, number]>(() => {
-    if (initialPosition) return initialPosition;
-    const x = mergedConfig.boundaryX[0] + Math.random() * (mergedConfig.boundaryX[1] - mergedConfig.boundaryX[0]);
-    const z = mergedConfig.boundaryZ[0] + Math.random() * (mergedConfig.boundaryZ[1] - mergedConfig.boundaryZ[0]);
-    return [x, mergedConfig.groundY, z];
-  }, [initialPosition, mergedConfig]);
+    if (initialPosition) {
+      // initialPositionが指定されている場合、Y座標はgroundYを使用
+      return [initialPosition[0], groundY, initialPosition[2]];
+    }
+    const x = boundaryX[0] + Math.random() * (boundaryX[1] - boundaryX[0]);
+    const z = boundaryZ[0] + Math.random() * (boundaryZ[1] - boundaryZ[0]);
+    return [x, groundY, z];
+  }, [initialPosition, boundaryX, boundaryZ, groundY]);
 
   useFrame((_, delta) => {
-    if (!rigidBodyRef.current) return;
+    if (!rigidBodyRef.current || !groupRef.current) return;
 
     timeRef.current += delta;
     const t = timeRef.current;
@@ -85,45 +95,73 @@ export function WanderingCharacter({
     const noiseValue = noise2D(t * 0.1 + seed, seed);
     targetAngleRef.current += noiseValue * delta * 0.5;
 
-    // 現在の角度を目標角度に向けてスムーズに補間
-    const angleDiff = targetAngleRef.current - currentAngleRef.current;
-    currentAngleRef.current += angleDiff * mergedConfig.turnSpeed * delta;
-
-    // 移動方向の計算
-    const dirX = Math.cos(currentAngleRef.current);
-    const dirZ = Math.sin(currentAngleRef.current);
-
     // 現在位置を取得
     const pos = rigidBodyRef.current.translation();
 
-    // 境界チェック: 端に近づいたら反対方向に向かう
-    let newTargetAngle = targetAngleRef.current;
-    if (pos.x < mergedConfig.boundaryX[0] + 1) {
-      newTargetAngle = 0; // 右へ
-    } else if (pos.x > mergedConfig.boundaryX[1] - 1) {
-      newTargetAngle = Math.PI; // 左へ
+    // 境界チェック: 壁に近づいたら目標角度を調整
+    const wallMargin = 1.0;
+    if (pos.x < boundaryX[0] + wallMargin) {
+      targetAngleRef.current = 0; // 右へ向かわせる
+    } else if (pos.x > boundaryX[1] - wallMargin) {
+      targetAngleRef.current = Math.PI; // 左へ向かわせる
     }
-    if (pos.z < mergedConfig.boundaryZ[0] + 0.5) {
-      newTargetAngle = Math.PI / 2; // 奥へ
-    } else if (pos.z > mergedConfig.boundaryZ[1] - 0.5) {
-      newTargetAngle = -Math.PI / 2; // 手前へ
+    if (pos.z < boundaryZ[0] + wallMargin * 0.5) {
+      targetAngleRef.current = Math.PI / 2; // 奥へ向かわせる
+    } else if (pos.z > boundaryZ[1] - wallMargin * 0.5) {
+      targetAngleRef.current = -Math.PI / 2; // 手前へ向かわせる
     }
-    targetAngleRef.current = newTargetAngle;
 
-    // 次の位置を計算（Kinematicなので直接位置を設定）
-    const newX = pos.x + dirX * mergedConfig.speed * delta;
-    const newZ = pos.z + dirZ * mergedConfig.speed * delta;
+    // ===== 生物学的に自然な動作の実装 =====
+    // 生物は「まず向きを変えて」から「その向いている方向に進む」
 
+    // 現在のモデルの向き
+    const currentFacingAngle = groupRef.current.rotation.y;
+
+    // 現在の向きから目標向きへの差分を計算
+    let angleDiffToTarget = targetAngleRef.current - currentFacingAngle;
+
+    // 最短経路で回転するように正規化（-π 〜 π）
+    while (angleDiffToTarget > Math.PI) angleDiffToTarget -= Math.PI * 2;
+    while (angleDiffToTarget < -Math.PI) angleDiffToTarget += Math.PI * 2;
+
+    // 回転速度を計算（向きの差が大きいほど速く回転）
+    const rotationSpeed = mergedConfig.turnSpeed * 2;
+    const rotationAmount = Math.sign(angleDiffToTarget) *
+      Math.min(Math.abs(angleDiffToTarget), rotationSpeed * delta);
+
+    // モデルの向きを更新
+    groupRef.current.rotation.y += rotationAmount;
+
+    // 内部の現在角度も更新（同期を保つ）
+    currentAngleRef.current = groupRef.current.rotation.y;
+
+    // ===== 移動: 顔が向いている方向にのみ移動 =====
+    // 向きの差が大きい場合は移動を抑制（まず回転を優先）
+    const facingAlignment = Math.cos(angleDiffToTarget); // 1.0 = 完全に合っている, 0 = 90度ずれ, -1 = 真後ろ
+    const movementFactor = Math.max(0, facingAlignment); // 後ろ向きへの移動は禁止
+
+    // 向いている方向に基づいて移動方向を計算
+    // GLBモデルの前方が -Z 方向のため、符号を反転
+    const facingX = -Math.sin(groupRef.current.rotation.y);
+    const facingZ = -Math.cos(groupRef.current.rotation.y);
+
+    // 移動速度（向きのずれが小さいほど速く移動）
+    const effectiveSpeed = mergedConfig.speed * movementFactor;
+
+    // 次の位置を計算（顔の向きに直線移動）
+    let newX = pos.x + facingX * effectiveSpeed * delta;
+    let newZ = pos.z + facingZ * effectiveSpeed * delta;
+
+    // 境界クランプ
+    newX = Math.max(boundaryX[0], Math.min(boundaryX[1], newX));
+    newZ = Math.max(boundaryZ[0], Math.min(boundaryZ[1], newZ));
+
+    // 位置を更新
     rigidBodyRef.current.setNextKinematicTranslation({
       x: newX,
-      y: mergedConfig.groundY,
+      y: groundY,
       z: newZ,
     });
-
-    // モデルの向きを移動方向に合わせる
-    if (groupRef.current) {
-      groupRef.current.rotation.y = -currentAngleRef.current + Math.PI / 2;
-    }
   });
 
   return (
@@ -135,9 +173,9 @@ export function WanderingCharacter({
     >
       {/* カプセルコライダー: キャラクターの当たり判定 */}
       {/* 記事に接触すると、記事が物理的に押される */}
-      <CapsuleCollider args={[0.3, 0.2]} position={[0, 0.5, 0]} />
+      <CapsuleCollider args={[0.3 * size, 0.2 * size]} position={[0, 0.5 * size, 0]} />
 
-      <group ref={groupRef} scale={0.5}>
+      <group ref={groupRef} scale={size}>
         <primitive object={clonedScene} />
       </group>
     </RigidBody>
