@@ -12,15 +12,16 @@
  */
 
 import Link from 'next/link';
-import type { Post } from '@/types';
+import type { Post, SocialLink } from '@/types';
 import { Pagination } from '@/components/Pagination';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 
 interface BlogListViewProps {
   posts: Post[];
+  socialLinks?: SocialLink[];
 }
 
-export function BlogListView({ posts }: BlogListViewProps) {
+export function BlogListView({ posts, socialLinks = [] }: BlogListViewProps) {
   const categoryLabels: Record<string, string> = {
     article: '記事',
     note: 'メモ',
@@ -119,7 +120,7 @@ export function BlogListView({ posts }: BlogListViewProps) {
         </Link>
       </nav>
 
-      <MobileMenu />
+      <MobileMenu socialLinks={socialLinks} />
     </div>
   );
 }

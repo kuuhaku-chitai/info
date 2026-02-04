@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import type { Post } from '@/types';
+import type { Post, SocialLink } from '@/types';
 import { ScheduleListView } from './ScheduleListView';
 import { ScheduleCalendarView } from './ScheduleCalendarView';
 import { MobileMenu } from '@/components/ui/MobileMenu';
@@ -18,9 +18,10 @@ type ViewMode = 'list' | 'calendar';
 
 interface ScheduleContentProps {
   events: Post[];
+  socialLinks?: SocialLink[];
 }
 
-export function ScheduleContent({ events }: ScheduleContentProps) {
+export function ScheduleContent({ events, socialLinks = [] }: ScheduleContentProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const toggleMode = useCallback(() => {
@@ -88,7 +89,7 @@ export function ScheduleContent({ events }: ScheduleContentProps) {
         </div>
       </button>
 
-      <MobileMenu />
+      <MobileMenu socialLinks={socialLinks} />
     </div>
   );
 }

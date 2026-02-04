@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type CountdownState, type Donation } from '@/types';
+import { type Post, type CountdownState, type Donation, type SocialLink } from '@/types';
 
 // ============================================
 // 型定義
@@ -381,4 +381,87 @@ export async function getStats() {
     totalDonationAmount: donationsResult[0]?.total_amount || 0,
     addedSeconds: countdown.addedSeconds,
   };
+}
+
+// ============================================
+// ソーシャルリンク操作
+// ============================================
+
+function rowToSocialLink(row: DbRow): SocialLink {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    url: row.url as string,
+    iconUrl: row.icon_url as string,
+    sortOrder: row.sort_order as number,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getAllSocialLinks(): Promise<SocialLink[]> {
+  const rows = await query('SELECT * FROM social_links ORDER BY sort_order ASC');
+  return rows.map(rowToSocialLink);
+}
+
+export async function getSocialLinkById(id: string): Promise<SocialLink | null> {
+  const row = await queryOne('SELECT * FROM social_links WHERE id = ?', [id]);
+  return row ? rowToSocialLink(row) : null;
+}
+
+export async function createSocialLink(
+  link: Omit<SocialLink, 'createdAt' | 'updatedAt'> & { updatedAt?: string }
+): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO social_links (id, title, url, icon_url, sort_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      link.id,
+      link.title,
+      link.url,
+      link.iconUrl,
+      link.sortOrder,
+      now,
+      link.updatedAt || now,
+    ]
+  );
+}
+
+export async function updateSocialLink(
+  id: string,
+  update: Partial<Omit<SocialLink, 'id' | 'createdAt'>>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.title !== undefined) {
+    fields.push('title = ?');
+    values.push(update.title);
+  }
+  if (update.url !== undefined) {
+    fields.push('url = ?');
+    values.push(update.url);
+  }
+  if (update.iconUrl !== undefined) {
+    fields.push('icon_url = ?');
+    values.push(update.iconUrl);
+  }
+  if (update.sortOrder !== undefined) {
+    fields.push('sort_order = ?');
+    values.push(update.sortOrder);
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(
+    `UPDATE social_links SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+export async function deleteSocialLink(id: string): Promise<void> {
+  await execute('DELETE FROM social_links WHERE id = ?', [id]);
 }

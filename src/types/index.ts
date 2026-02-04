@@ -80,6 +80,31 @@ export interface Donation {
 }
 
 // ============================================
+// ソーシャルリンク
+// ============================================
+
+/**
+ * ソーシャルリンクデータ
+ * 外部SNS等へのリンクを管理
+ */
+export interface SocialLink {
+  /** 一意識別子 */
+  id: string;
+  /** リンクタイトル（例: Twitter, Instagram） */
+  title: string;
+  /** リンクURL */
+  url: string;
+  /** アイコン画像URL */
+  iconUrl: string;
+  /** 表示順序（小さいほど先に表示） */
+  sortOrder: number;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
+}
+
+// ============================================
 // Discord Notification Types
 // ============================================
 

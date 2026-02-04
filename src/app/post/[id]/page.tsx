@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { fetchPostById } from '@/lib/actions';
+import { fetchPostById, fetchAllSocialLinks } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
@@ -34,7 +34,10 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PostPage({ params }: PageProps) {
   const { id } = await params;
-  const post = await fetchPostById(id);
+  const [post, socialLinks] = await Promise.all([
+    fetchPostById(id),
+    fetchAllSocialLinks(),
+  ]);
 
   if (!post || !post.isPublished) {
     notFound();
@@ -136,7 +139,7 @@ export default async function PostPage({ params }: PageProps) {
         </Link>
       </nav>
 
-      <MobileMenu />
+      <MobileMenu socialLinks={socialLinks} />
     </div>
   );
 }

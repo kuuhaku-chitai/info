@@ -63,6 +63,14 @@ export default function AdminLayout({
               </li>
               <li>
                 <Link
+                  href="/admin/social"
+                  className="hover:text-ink transition-colors"
+                >
+                  ソーシャル
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/"
                   className="hover:text-ink transition-colors"
                 >

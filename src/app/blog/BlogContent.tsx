@@ -14,7 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import type { Post } from '@/types';
+import type { Post, SocialLink } from '@/types';
 import { BlogListView } from './BlogListView';
 
 // Blog3DSceneは動的インポート（SSRを避ける）
@@ -35,6 +35,7 @@ type ViewMode = 'list' | 'installation';
 
 interface BlogContentProps {
   posts: Post[];
+  socialLinks?: SocialLink[];
 }
 
 /**
@@ -72,7 +73,7 @@ function useIsMobile(): boolean | null {
   return isMobile;
 }
 
-export function BlogContent({ posts }: BlogContentProps) {
+export function BlogContent({ posts, socialLinks = [] }: BlogContentProps) {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -92,14 +93,14 @@ export function BlogContent({ posts }: BlogContentProps) {
 
   // モバイルの場合はリストモードのみ
   if (isMobile) {
-    return <BlogListView posts={posts} />;
+    return <BlogListView posts={posts} socialLinks={socialLinks} />;
   }
 
   // PCの場合: モード切り替え可能
   return (
     <div className="relative min-h-screen">
       {/* リストモード */}
-      {viewMode === 'list' && <BlogListView posts={posts} />}
+      {viewMode === 'list' && <BlogListView posts={posts} socialLinks={socialLinks} />}
 
       {/* インスタレーションモード（3D空間） */}
       {viewMode === 'installation' && (

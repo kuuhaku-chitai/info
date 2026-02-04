@@ -8,7 +8,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Donation, type CountdownState } from '@/types';
+import { type Post, type Donation, type CountdownState, type SocialLink } from '@/types';
 import { amountToSeconds } from './constants';
 import * as db from './db';
 import { notifyLifespanExtension, notifyNewEvent } from './discord';
@@ -174,4 +174,64 @@ export async function deleteExistingDonation(id: string): Promise<boolean> {
 
 export async function fetchStats() {
   return db.getStats();
+}
+
+// ============================================
+// ソーシャルリンク Actions
+// ============================================
+
+export async function fetchAllSocialLinks(): Promise<SocialLink[]> {
+  return db.getAllSocialLinks();
+}
+
+export async function fetchSocialLinkById(id: string): Promise<SocialLink | null> {
+  return db.getSocialLinkById(id);
+}
+
+export async function createNewSocialLink(
+  data: Omit<SocialLink, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<SocialLink> {
+  const now = new Date().toISOString();
+  const link: Omit<SocialLink, 'createdAt'> & { createdAt?: string } = {
+    ...data,
+    id: generateId(),
+    updatedAt: now,
+  };
+
+  await db.createSocialLink(link);
+
+  revalidatePath('/admin/social');
+  revalidatePath('/');
+
+  return {
+    ...link,
+    createdAt: now,
+  } as SocialLink;
+}
+
+export async function updateExistingSocialLink(
+  id: string,
+  data: Partial<Omit<SocialLink, 'id' | 'createdAt'>>
+): Promise<SocialLink | null> {
+  const existing = await db.getSocialLinkById(id);
+  if (!existing) return null;
+
+  await db.updateSocialLink(id, data);
+
+  const updated = await db.getSocialLinkById(id);
+
+  revalidatePath('/admin/social');
+  revalidatePath(`/admin/social/${id}`);
+  revalidatePath('/');
+
+  return updated;
+}
+
+export async function deleteExistingSocialLink(id: string): Promise<boolean> {
+  await db.deleteSocialLink(id);
+
+  revalidatePath('/admin/social');
+  revalidatePath('/');
+
+  return true;
 }

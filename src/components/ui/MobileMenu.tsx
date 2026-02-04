@@ -10,9 +10,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { type SocialLink } from '@/types';
 
-export function MobileMenu() {
+interface MobileMenuProps {
+    socialLinks?: SocialLink[];
+}
+
+export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
 
@@ -87,6 +93,35 @@ export function MobileMenu() {
                         ))}
                     </ul>
                 </nav>
+
+                {/* ソーシャルリンク */}
+                {socialLinks.length > 0 && (
+                    <div
+                        className={`mt-12 flex items-center justify-center gap-4 transition-all duration-500 ${
+                            isOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                        }`}
+                        style={{ transitionDelay: isOpen ? '300ms' : '0ms' }}
+                    >
+                        {socialLinks.map((link) => (
+                            <a
+                                key={link.id}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={link.title}
+                                className="relative w-8 h-8 opacity-50 hover:opacity-100 transition-opacity"
+                            >
+                                <Image
+                                    src={link.iconUrl}
+                                    alt={link.title}
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
+                                />
+                            </a>
+                        ))}
+                    </div>
+                )}
 
                 {/* 装飾: 背景のパーティクル等はglobalsで管理されているが、ここではシンプルに */}
                 <div className="absolute bottom-8 left-0 w-full text-center">

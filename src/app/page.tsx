@@ -17,7 +17,8 @@ import { CountdownServer } from '@/components/countdown';
 import { WeatherAtmosphereClient } from '@/components/weather';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { NewsSection } from '@/components/news';
-import { fetchPostsByCategory } from '@/lib/actions';
+import { SocialLinks } from '@/components/social';
+import { fetchPostsByCategory, fetchAllSocialLinks } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,9 @@ export default async function HomePage() {
   const latestNews = allNews
     .filter((post) => post.isPublished)
     .slice(0, 5);
+
+  // ソーシャルリンクを取得
+  const socialLinks = await fetchAllSocialLinks();
 
   return (
     <div className="void-embrace relative">
@@ -46,6 +50,14 @@ export default async function HomePage() {
           空白地帯
         </h1>
       </header>
+
+      {/*
+        ソーシャルリンク - 右上隅に配置（PC only）
+        控えめなアイコンで外部リンクを提供
+      */}
+      <div className="hug-corner-tr z-10 hidden md:block fade-in-slow">
+        <SocialLinks links={socialLinks} size="small" />
+      </div>
 
       {/*
         中央エリア - お知らせを表示
@@ -91,8 +103,8 @@ export default async function HomePage() {
         </ul>
       </nav>
 
-      {/* モバイルメニュー */}
-      <MobileMenu />
+      {/* モバイルメニュー（ソーシャルリンク付き） */}
+      <MobileMenu socialLinks={socialLinks} />
     </div>
   );
 }
