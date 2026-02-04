@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS posts (
   title TEXT NOT NULL,
   date TEXT NOT NULL,
   markdown TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL CHECK (category IN ('event', 'article', 'note')),
+  category TEXT NOT NULL CHECK (category IN ('event', 'article', 'note', 'news')),
   tags TEXT NOT NULL DEFAULT '[]',  -- JSON配列として保存
   is_published INTEGER NOT NULL DEFAULT 0,
   thumbnail_url TEXT,

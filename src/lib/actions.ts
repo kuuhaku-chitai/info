@@ -73,6 +73,7 @@ export async function createNewPost(
   revalidatePath('/admin/posts');
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/');
 
   return post;
 }
@@ -102,6 +103,7 @@ export async function updateExistingPost(
   revalidatePath(`/admin/posts/${id}`);
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/');
 
   return updated;
 }
@@ -113,6 +115,7 @@ export async function deleteExistingPost(id: string): Promise<boolean> {
   revalidatePath('/admin/posts');
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/');
 
   return true;
 }

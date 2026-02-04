@@ -45,11 +45,16 @@ export default async function PostPage({ params }: PageProps) {
     article: '記事',
     note: 'メモ',
     event: 'イベント',
+    news: 'お知らせ',
   };
 
   // 戻り先を決定
-  const backLink = post.category === 'event' ? '/schedule' : '/blog';
-  const backLabel = post.category === 'event' ? '予定' : '記録';
+  const getBackLink = () => {
+    if (post.category === 'event') return { link: '/schedule', label: '予定' };
+    if (post.category === 'news') return { link: '/', label: 'トップ' };
+    return { link: '/blog', label: '記録' };
+  };
+  const { link: backLink, label: backLabel } = getBackLink();
 
   return (
     <div className="min-h-screen bg-[var(--color-void)] pt-16 pb-32 px-8">

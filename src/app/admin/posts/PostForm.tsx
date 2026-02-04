@@ -155,6 +155,7 @@ export function PostForm({ post }: PostFormProps) {
           <option value="note">メモ</option>
           <option value="article">記事</option>
           <option value="event">イベント</option>
+          <option value="news">お知らせ</option>
         </select>
       </div>
 

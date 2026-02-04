@@ -25,6 +25,7 @@ export function BlogListView({ posts }: BlogListViewProps) {
     article: '記事',
     note: 'メモ',
     event: 'イベント',
+    news: 'お知らせ',
   };
 
   return (

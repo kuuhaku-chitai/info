@@ -14,8 +14,9 @@
  * - event: カレンダーに表示されるイベント（展示、パフォーマンス等）
  * - article: 長文の記事（エッセイ、批評等）
  * - note: 短いメモ、断片的な思考
+ * - news: お知らせ（トップページに表示される重要な告知）
  */
-export type PostCategory = 'event' | 'article' | 'note';
+export type PostCategory = 'event' | 'article' | 'note' | 'news';
 
 /**
  * 投稿データ
