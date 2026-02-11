@@ -12,6 +12,16 @@ export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
 
+  // GLB ファイル: Workers アセット上限(25MB)を超えるため R2 から配信
+  // 本番では R2_PUBLIC_URL にリダイレクト、開発環境では public/ から直接配信
+  if (pathname.startsWith('/assets/glb/')) {
+    const r2PublicUrl = process.env.R2_PUBLIC_URL;
+    if (r2PublicUrl) {
+      return NextResponse.redirect(`${r2PublicUrl}${pathname}`, 308);
+    }
+    return NextResponse.next();
+  }
+
   // admin サブドメインからのリクエスト: /admin パスに rewrite
   if (hostname.startsWith('admin.')) {
     const url = request.nextUrl.clone();

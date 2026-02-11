@@ -39,6 +39,7 @@ yarn-error.log*
 # cloudflare
 .wrangler/
 .dev.vars
+.open-next/
 
 # local uploads (dev only)
 /public/uploads/

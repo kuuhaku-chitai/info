@@ -58,6 +58,14 @@ export default function AdminLayout({
               </li>
               <li>
                 <Link
+                  href="/projects"
+                  className="hover:text-ink transition-colors"
+                >
+                  プロジェクト
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/donations"
                   className="hover:text-ink transition-colors"
                 >

@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type CountdownState, type Donation, type SocialLink } from '@/types';
+import { type Post, type Project, type CountdownState, type Donation, type SocialLink } from '@/types';
 
 // ============================================
 // 型定義
@@ -195,6 +195,7 @@ function rowToPost(row: DbRow): Post {
     eventStartDate: row.event_start_date as string | undefined,
     eventEndDate: row.event_end_date as string | undefined,
     updatedAt: row.updated_at as string,
+    projectId: row.project_id as string | undefined,
   };
 }
 
@@ -204,8 +205,9 @@ export async function getAllPosts(): Promise<Post[]> {
 }
 
 export async function getPublishedPosts(): Promise<Post[]> {
+  // プロジェクトに紐づく投稿はブログ一覧から除外
   const rows = await query(
-    'SELECT * FROM posts WHERE is_published = 1 ORDER BY date DESC'
+    'SELECT * FROM posts WHERE is_published = 1 AND project_id IS NULL ORDER BY date DESC'
   );
   return rows.map(rowToPost);
 }
@@ -226,8 +228,8 @@ export async function getPostById(id: string): Promise<Post | null> {
 export async function createPost(post: Omit<Post, 'updatedAt'> & { updatedAt?: string }): Promise<void> {
   const now = new Date().toISOString();
   await execute(
-    `INSERT INTO posts (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO posts (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at, project_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       post.id,
       post.title,
@@ -240,6 +242,7 @@ export async function createPost(post: Omit<Post, 'updatedAt'> & { updatedAt?: s
       post.eventStartDate || null,
       post.eventEndDate || null,
       post.updatedAt || now,
+      post.projectId || null,
     ]
   );
 }
@@ -282,6 +285,10 @@ export async function updatePost(
   if (update.eventEndDate !== undefined) {
     fields.push('event_end_date = ?');
     values.push(update.eventEndDate || null);
+  }
+  if (update.projectId !== undefined) {
+    fields.push('project_id = ?');
+    values.push(update.projectId || null);
   }
 
   fields.push('updated_at = ?');
@@ -464,4 +471,126 @@ export async function updateSocialLink(
 
 export async function deleteSocialLink(id: string): Promise<void> {
   await execute('DELETE FROM social_links WHERE id = ?', [id]);
+}
+
+// ============================================
+// プロジェクト操作
+// ============================================
+
+function rowToProject(row: DbRow): Project {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    date: row.date as string,
+    markdown: row.markdown as string,
+    category: row.category as Project['category'],
+    tags: JSON.parse((row.tags as string) || '[]'),
+    isPublished: !!(row.is_published as number),
+    thumbnailUrl: row.thumbnail_url as string | undefined,
+    eventStartDate: row.event_start_date as string | undefined,
+    eventEndDate: row.event_end_date as string | undefined,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getAllProjects(): Promise<Project[]> {
+  const rows = await query('SELECT * FROM projects ORDER BY date DESC');
+  return rows.map(rowToProject);
+}
+
+export async function getPublishedProjects(): Promise<Project[]> {
+  const rows = await query(
+    'SELECT * FROM projects WHERE is_published = 1 ORDER BY date DESC'
+  );
+  return rows.map(rowToProject);
+}
+
+export async function getProjectById(id: string): Promise<Project | null> {
+  const row = await queryOne('SELECT * FROM projects WHERE id = ?', [id]);
+  return row ? rowToProject(row) : null;
+}
+
+export async function createProject(project: Omit<Project, 'updatedAt'> & { updatedAt?: string }): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO projects (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      project.id,
+      project.title,
+      project.date,
+      project.markdown,
+      project.category,
+      JSON.stringify(project.tags),
+      project.isPublished ? 1 : 0,
+      project.thumbnailUrl || null,
+      project.eventStartDate || null,
+      project.eventEndDate || null,
+      project.updatedAt || now,
+    ]
+  );
+}
+
+export async function updateProject(
+  id: string,
+  update: Partial<Project>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.title !== undefined) {
+    fields.push('title = ?');
+    values.push(update.title);
+  }
+  if (update.markdown !== undefined) {
+    fields.push('markdown = ?');
+    values.push(update.markdown);
+  }
+  if (update.category !== undefined) {
+    fields.push('category = ?');
+    values.push(update.category);
+  }
+  if (update.tags !== undefined) {
+    fields.push('tags = ?');
+    values.push(JSON.stringify(update.tags));
+  }
+  if (update.isPublished !== undefined) {
+    fields.push('is_published = ?');
+    values.push(update.isPublished ? 1 : 0);
+  }
+  if (update.thumbnailUrl !== undefined) {
+    fields.push('thumbnail_url = ?');
+    values.push(update.thumbnailUrl || null);
+  }
+  if (update.eventStartDate !== undefined) {
+    fields.push('event_start_date = ?');
+    values.push(update.eventStartDate || null);
+  }
+  if (update.eventEndDate !== undefined) {
+    fields.push('event_end_date = ?');
+    values.push(update.eventEndDate || null);
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(
+    `UPDATE projects SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  // プロジェクト削除時、紐づく投稿の project_id は ON DELETE SET NULL で自動的に null になる
+  await execute('DELETE FROM projects WHERE id = ?', [id]);
+}
+
+/** プロジェクトに紐づく公開投稿を取得 */
+export async function getPostsByProjectId(projectId: string): Promise<Post[]> {
+  const rows = await query(
+    'SELECT * FROM posts WHERE project_id = ? AND is_published = 1 ORDER BY date DESC',
+    [projectId]
+  );
+  return rows.map(rowToPost);
 }

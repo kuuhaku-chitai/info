@@ -100,6 +100,14 @@ export default async function HomePage() {
               予定
             </a>
           </li>
+          <li>
+            <a
+              href="/projects"
+              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
+            >
+              プロジェクト
+            </a>
+          </li>
         </ul>
       </nav>
 

@@ -52,8 +52,9 @@ export default async function PostPage({ params }: PageProps) {
     news: 'お知らせ',
   };
 
-  // 戻り先を決定
+  // 戻り先を決定（プロジェクト紐づきの場合はプロジェクト詳細へ）
   const getBackLink = () => {
+    if (post.projectId) return { link: `/project/${post.projectId}`, label: 'プロジェクト' };
     if (post.category === 'event') return { link: '/schedule', label: '予定' };
     if (post.category === 'news') return { link: '/', label: 'トップ' };
     return { link: '/blog', label: '記録' };

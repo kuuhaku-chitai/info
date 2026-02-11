@@ -8,7 +8,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Donation, type CountdownState, type SocialLink } from '@/types';
+import { type Post, type Project, type Donation, type CountdownState, type SocialLink } from '@/types';
 import { amountToSeconds } from './constants';
 import * as db from './db';
 import { notifyLifespanExtension, notifyNewEvent } from './discord';
@@ -73,6 +73,7 @@ export async function createNewPost(
   revalidatePath('/admin/posts');
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/projects');
   revalidatePath('/');
 
   return post;
@@ -103,6 +104,7 @@ export async function updateExistingPost(
   revalidatePath(`/admin/posts/${id}`);
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/projects');
   revalidatePath('/');
 
   return updated;
@@ -115,6 +117,7 @@ export async function deleteExistingPost(id: string): Promise<boolean> {
   revalidatePath('/admin/posts');
   revalidatePath('/blog');
   revalidatePath('/schedule');
+  revalidatePath('/projects');
   revalidatePath('/');
 
   return true;
@@ -231,6 +234,80 @@ export async function deleteExistingSocialLink(id: string): Promise<boolean> {
   await db.deleteSocialLink(id);
 
   revalidatePath('/admin/social');
+  revalidatePath('/');
+
+  return true;
+}
+
+// ============================================
+// プロジェクト Actions
+// ============================================
+
+export async function fetchAllProjects(): Promise<Project[]> {
+  return db.getAllProjects();
+}
+
+export async function fetchPublishedProjects(): Promise<Project[]> {
+  return db.getPublishedProjects();
+}
+
+export async function fetchProjectById(id: string): Promise<Project | null> {
+  return db.getProjectById(id);
+}
+
+/** プロジェクトに紐づく公開投稿を取得 */
+export async function fetchPostsByProjectId(projectId: string): Promise<Post[]> {
+  return db.getPostsByProjectId(projectId);
+}
+
+export async function createNewProject(
+  data: Omit<Project, 'id' | 'updatedAt'>
+): Promise<Project> {
+  const now = new Date().toISOString();
+  const project: Project = {
+    ...data,
+    id: generateId(),
+    updatedAt: now,
+  };
+
+  await db.createProject(project);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/projects');
+  revalidatePath('/projects');
+  revalidatePath('/');
+
+  return project;
+}
+
+export async function updateExistingProject(
+  id: string,
+  data: Partial<Project>
+): Promise<Project | null> {
+  const existing = await db.getProjectById(id);
+  if (!existing) return null;
+
+  await db.updateProject(id, data);
+
+  const updated = await db.getProjectById(id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/projects');
+  revalidatePath(`/admin/projects/${id}`);
+  revalidatePath('/projects');
+  revalidatePath(`/project/${id}`);
+  revalidatePath('/');
+
+  return updated;
+}
+
+export async function deleteExistingProject(id: string): Promise<boolean> {
+  await db.deleteProject(id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/projects');
+  revalidatePath('/projects');
+  revalidatePath('/blog');
   revalidatePath('/');
 
   return true;

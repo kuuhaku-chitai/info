@@ -46,6 +46,30 @@ export interface Post {
   eventEndDate?: string;
   /** 最終更新日時 (ISO 8601) */
   updatedAt: string;
+  /** 紐づくプロジェクトID（紐づいた投稿は /blog に表示されない） */
+  projectId?: string;
+}
+
+// ============================================
+// プロジェクト
+// ============================================
+
+/**
+ * プロジェクトデータ
+ * 投稿と同じ構造を持ち、関連記事を束ねる単位として機能する。
+ */
+export interface Project {
+  id: string;
+  title: string;
+  date: string;
+  markdown: string;
+  category: PostCategory;
+  tags: string[];
+  isPublished: boolean;
+  thumbnailUrl?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  updatedAt: string;
 }
 
 /**

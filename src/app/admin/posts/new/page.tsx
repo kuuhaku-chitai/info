@@ -6,9 +6,13 @@
  */
 
 import Link from 'next/link';
+import { fetchAllProjects } from '@/lib/actions';
 import { PostForm } from '../PostForm';
 
-export default function NewPostPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function NewPostPage() {
+  const projects = await fetchAllProjects();
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
@@ -28,7 +32,7 @@ export default function NewPostPage() {
       </div>
 
       {/* フォーム */}
-      <PostForm />
+      <PostForm projects={projects} />
     </div>
   );
 }

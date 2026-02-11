@@ -47,6 +47,7 @@ export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
         { href: '/', label: 'ホーム' },
         { href: '/blog', label: '記録' },
         { href: '/schedule', label: '予定' },
+        { href: '/projects', label: 'プロジェクト' },
     ];
 
     return (

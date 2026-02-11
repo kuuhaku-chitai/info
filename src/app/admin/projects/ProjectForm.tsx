@@ -1,67 +1,51 @@
 'use client';
 
 /**
- * 空白地帯 - 投稿フォーム
+ * 空白地帯 - プロジェクトフォーム
  *
- * 投稿の作成・編集に使用するフォーム。
- * アイキャッチ画像と本文への画像挿入に対応。
- *
- * コンセプト:
- * - シンプルで機能的なUI
- * - ドラッグ&ドロップで画像を簡単にアップロード
- * - 画像は自動的に圧縮される
+ * プロジェクトの作成・編集に使用するフォーム。
+ * PostForm と同じ構造を踏襲。
  */
 
 import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { type Post, type Project, type PostCategory } from '@/types';
-import { createNewPost, updateExistingPost } from '@/lib/actions';
+import { type Project, type PostCategory } from '@/types';
+import { createNewProject, updateExistingProject } from '@/lib/actions';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 
-interface PostFormProps {
-  /**
-   * 編集時は既存の投稿データを渡す
-   */
-  post?: Post;
-  /** プロジェクト一覧（紐づけ選択用） */
-  projects?: Project[];
+interface ProjectFormProps {
+  project?: Project;
 }
 
-/**
- * 一時的なIDを生成（新規投稿用）
- * 画像アップロード時に使用
- */
 function generateTempId(): string {
   return `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export function PostForm({ post, projects = [] }: PostFormProps) {
+export function ProjectForm({ project }: ProjectFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  // 新規投稿の場合は一時的なIDを生成
-  const postId = useMemo(() => post?.id ?? generateTempId(), [post?.id]);
+  const projectId = useMemo(() => project?.id ?? generateTempId(), [project?.id]);
 
   // フォームの初期値
-  const [title, setTitle] = useState(post?.title ?? '');
-  const [category, setCategory] = useState<PostCategory>(post?.category ?? 'note');
-  const [markdown, setMarkdown] = useState(post?.markdown ?? '');
-  const [tags, setTags] = useState(post?.tags.join(', ') ?? '');
-  const [isPublished, setIsPublished] = useState(post?.isPublished ?? false);
+  const [title, setTitle] = useState(project?.title ?? '');
+  const [category, setCategory] = useState<PostCategory>(project?.category ?? 'note');
+  const [markdown, setMarkdown] = useState(project?.markdown ?? '');
+  const [tags, setTags] = useState(project?.tags.join(', ') ?? '');
+  const [isPublished, setIsPublished] = useState(project?.isPublished ?? false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(
-    post?.thumbnailUrl
+    project?.thumbnailUrl
   );
-  const [projectId, setProjectId] = useState<string>(post?.projectId ?? '');
   const [eventStartDate, setEventStartDate] = useState(
-    post?.eventStartDate?.slice(0, 16) ?? ''
+    project?.eventStartDate?.slice(0, 16) ?? ''
   );
   const [eventEndDate, setEventEndDate] = useState(
-    post?.eventEndDate?.slice(0, 16) ?? ''
+    project?.eventEndDate?.slice(0, 16) ?? ''
   );
 
-  const isEditing = !!post;
+  const isEditing = !!project;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +58,7 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
 
     startTransition(async () => {
       try {
-        const postData = {
+        const projectData = {
           title: title.trim(),
           category,
           markdown,
@@ -83,9 +67,8 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
             .map((t) => t.trim())
             .filter(Boolean),
           isPublished,
-          date: post?.date ?? new Date().toISOString(),
+          date: project?.date ?? new Date().toISOString(),
           thumbnailUrl,
-          projectId: projectId || undefined,
           eventStartDate:
             category === 'event' && eventStartDate
               ? new Date(eventStartDate).toISOString()
@@ -97,12 +80,12 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
         };
 
         if (isEditing) {
-          await updateExistingPost(post.id, postData);
+          await updateExistingProject(project.id, projectData);
         } else {
-          await createNewPost(postData);
+          await createNewProject(projectData);
         }
 
-        router.push('/posts');
+        router.push('/projects');
       } catch (err) {
         setError('保存に失敗しました');
         console.error(err);
@@ -121,7 +104,7 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
 
       {/* アイキャッチ画像 */}
       <ImageUploader
-        postId={postId}
+        postId={projectId}
         value={thumbnailUrl}
         onChange={setThumbnailUrl}
         label="アイキャッチ画像"
@@ -141,7 +124,7 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full px-3 py-2 border border-edge rounded text-sm text-ink bg-void focus:outline-none focus:border-ghost"
-          placeholder="投稿のタイトル"
+          placeholder="プロジェクトのタイトル"
         />
       </div>
 
@@ -205,7 +188,7 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
           本文（Markdown）
         </label>
         <MarkdownEditor
-          postId={postId}
+          postId={projectId}
           value={markdown}
           onChange={setMarkdown}
           placeholder="Markdownで記述..."
@@ -229,28 +212,6 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
           placeholder="展示, 東京, 2025"
         />
       </div>
-
-      {/* プロジェクト紐づけ */}
-      {projects.length > 0 && (
-        <div>
-          <label htmlFor="projectId" className="block text-xs text-ghost mb-2">
-            プロジェクト（紐づけると通常のブログ一覧には表示されません）
-          </label>
-          <select
-            id="projectId"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded text-sm text-ink bg-void focus:outline-none focus:border-ghost"
-          >
-            <option value="">なし</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* 公開状態 */}
       <div className="flex items-center gap-2">
