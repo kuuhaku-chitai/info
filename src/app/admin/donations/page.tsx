@@ -31,7 +31,7 @@ export default async function DonationsPage() {
           </p>
         </div>
         <Link
-          href="/admin/donations/new"
+          href="/donations/new"
           className="px-4 py-2 bg-ink text-void text-xs rounded hover:opacity-80 transition-opacity"
         >
           入金を記録
@@ -59,7 +59,7 @@ export default async function DonationsPage() {
         <div className="text-center py-12">
           <p className="text-ghost text-sm">まだ入金がありません</p>
           <Link
-            href="/admin/donations/new"
+            href="/donations/new"
             className="inline-block mt-4 text-xs text-ink underline hover:no-underline"
           >
             最初の入金を記録

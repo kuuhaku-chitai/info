@@ -11,6 +11,7 @@
 import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
 import type { Components } from 'react-markdown';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface MarkdownRendererProps {
     content: string;
@@ -116,10 +117,14 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         // 画像
         img: ({ src, alt }) => {
             if (!src || typeof src !== 'string') return null;
+
+            // 画像URLを最適化
+            const imageSrc = getOptimizedImageUrl(src);
+
             return (
                 <span className="block my-8">
                     <Image
-                        src={src}
+                        src={imageSrc}
                         alt={alt || ''}
                         width={800}
                         height={600}

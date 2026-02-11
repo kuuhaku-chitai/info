@@ -19,7 +19,7 @@ export default async function PostsPage() {
           </p>
         </div>
         <Link
-          href="/admin/posts/new"
+          href="/posts/new"
           className="px-4 py-2 bg-ink text-void text-xs rounded hover:opacity-80 transition-opacity"
         >
           新規投稿

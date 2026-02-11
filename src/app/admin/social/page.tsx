@@ -23,7 +23,7 @@ export default async function SocialLinksPage() {
           </p>
         </div>
         <Link
-          href="/admin/social/new"
+          href="/social/new"
           className="px-4 py-2 bg-ink text-void text-xs rounded hover:opacity-80 transition-opacity"
         >
           新規追加
@@ -76,7 +76,7 @@ export default async function SocialLinksPage() {
               {/* アクション */}
               <div className="flex items-center gap-3 flex-shrink-0">
                 <Link
-                  href={`/admin/social/${link.id}`}
+                  href={`/social/${link.id}`}
                   className="text-xs text-ghost hover:text-ink"
                 >
                   編集

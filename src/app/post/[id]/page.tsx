@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { fetchPostById, fetchAllSocialLinks } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export default async function PostPage({ params }: PageProps) {
         {post.thumbnailUrl && (
           <div className="relative aspect-video mb-12 content-frame overflow-hidden">
             <Image
-              src={post.thumbnailUrl}
+              src={getOptimizedImageUrl(post.thumbnailUrl)}
               alt={post.title}
               fill
               className="object-cover"

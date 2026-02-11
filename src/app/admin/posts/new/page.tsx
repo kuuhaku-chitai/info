@@ -20,7 +20,7 @@ export default function NewPostPage() {
           </p>
         </div>
         <Link
-          href="/admin/posts"
+          href="/posts"
           className="text-xs text-ghost hover:text-ink transition-colors"
         >
           ← 一覧に戻る

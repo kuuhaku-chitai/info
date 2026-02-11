@@ -71,7 +71,7 @@ export function SocialLinkForm({ link }: SocialLinkFormProps) {
           await createNewSocialLink(linkData);
         }
 
-        router.push('/admin/social');
+        router.push('/social');
       } catch (err) {
         setError('保存に失敗しました');
         console.error(err);

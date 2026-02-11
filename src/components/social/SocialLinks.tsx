@@ -12,6 +12,7 @@
 
 import Image from 'next/image';
 import { type SocialLink } from '@/types';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface SocialLinksProps {
   links: SocialLink[];
@@ -58,7 +59,7 @@ export function SocialLinks({
           style={{ width: iconSize, height: iconSize }}
         >
           <Image
-            src={link.iconUrl}
+            src={getOptimizedImageUrl(link.iconUrl)}
             alt={link.title}
             fill
             className="object-contain"

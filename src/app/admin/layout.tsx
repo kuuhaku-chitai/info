@@ -19,6 +19,9 @@ export const metadata = {
   },
 };
 
+/** サブドメインからメインサイトへのリンク用 */
+const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
 export default function AdminLayout({
   children,
 }: {
@@ -30,7 +33,7 @@ export default function AdminLayout({
       <header className="border-b border-[var(--color-edge)] px-6 py-4">
         <div className="flex items-center justify-between max-w-5xl mx-auto">
           <Link
-            href="/admin"
+            href="/"
             className="text-ink text-sm font-medium tracking-wide"
           >
             空白地帯 / 管理
@@ -39,7 +42,7 @@ export default function AdminLayout({
             <ul className="flex gap-6 text-xs text-ghost">
               <li>
                 <Link
-                  href="/admin"
+                  href="/"
                   className="hover:text-ink transition-colors"
                 >
                   ダッシュボード
@@ -47,7 +50,7 @@ export default function AdminLayout({
               </li>
               <li>
                 <Link
-                  href="/admin/posts"
+                  href="/posts"
                   className="hover:text-ink transition-colors"
                 >
                   投稿
@@ -55,7 +58,7 @@ export default function AdminLayout({
               </li>
               <li>
                 <Link
-                  href="/admin/donations"
+                  href="/donations"
                   className="hover:text-ink transition-colors"
                 >
                   入金
@@ -63,19 +66,19 @@ export default function AdminLayout({
               </li>
               <li>
                 <Link
-                  href="/admin/social"
+                  href="/social"
                   className="hover:text-ink transition-colors"
                 >
                   ソーシャル
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/"
+                <a
+                  href={siteUrl}
                   className="hover:text-ink transition-colors"
                 >
                   サイトへ
-                </Link>
+                </a>
               </li>
             </ul>
           </nav>

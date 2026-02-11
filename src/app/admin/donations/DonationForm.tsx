@@ -57,7 +57,7 @@ export function DonationForm() {
           note: note.trim() || undefined,
         });
 
-        router.push('/admin/donations');
+        router.push('/donations');
       } catch (err) {
         setError('記録に失敗しました');
         console.error(err);

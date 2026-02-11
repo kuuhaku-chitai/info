@@ -20,7 +20,7 @@ export default function NewDonationPage() {
           </p>
         </div>
         <Link
-          href="/admin/donations"
+          href="/donations"
           className="text-xs text-ghost hover:text-ink transition-colors"
         >
           ← 一覧に戻る

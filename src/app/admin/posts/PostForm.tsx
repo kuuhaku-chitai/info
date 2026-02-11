@@ -98,7 +98,7 @@ export function PostForm({ post }: PostFormProps) {
           await createNewPost(postData);
         }
 
-        router.push('/admin/posts');
+        router.push('/posts');
       } catch (err) {
         setError('保存に失敗しました');
         console.error(err);

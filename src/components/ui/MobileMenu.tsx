@@ -13,6 +13,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { type SocialLink } from '@/types';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface MobileMenuProps {
     socialLinks?: SocialLink[];
@@ -97,9 +98,8 @@ export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
                 {/* ソーシャルリンク */}
                 {socialLinks.length > 0 && (
                     <div
-                        className={`mt-12 flex items-center justify-center gap-4 transition-all duration-500 ${
-                            isOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-                        }`}
+                        className={`mt-12 flex items-center justify-center gap-4 transition-all duration-500 ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                            }`}
                         style={{ transitionDelay: isOpen ? '300ms' : '0ms' }}
                     >
                         {socialLinks.map((link) => (
@@ -112,7 +112,7 @@ export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
                                 className="relative w-8 h-8 opacity-50 hover:opacity-100 transition-opacity"
                             >
                                 <Image
-                                    src={link.iconUrl}
+                                    src={getOptimizedImageUrl(link.iconUrl)}
                                     alt={link.title}
                                     fill
                                     className="object-contain"

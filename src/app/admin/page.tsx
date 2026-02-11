@@ -106,13 +106,13 @@ export default async function AdminDashboardPage() {
         <h2 className="text-sm font-medium text-ink mb-4">クイックアクション</h2>
         <div className="flex gap-4">
           <Link
-            href="/admin/posts/new"
+            href="/posts/new"
             className="px-4 py-2 bg-ink text-void text-xs rounded hover:opacity-80 transition-opacity"
           >
             新規投稿
           </Link>
           <Link
-            href="/admin/donations/new"
+            href="/donations/new"
             className="px-4 py-2 border border-edge text-ink text-xs rounded hover:border-ghost transition-colors"
           >
             入金記録

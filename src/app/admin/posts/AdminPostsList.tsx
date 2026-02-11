@@ -61,7 +61,7 @@ export function AdminPostsList({ posts }: AdminPostsListProps) {
       <div className="text-center py-12">
         <p className="text-ghost text-sm">まだ投稿がありません</p>
         <Link
-          href="/admin/posts/new"
+          href="/posts/new"
           className="inline-block mt-4 text-xs text-ink underline hover:no-underline"
         >
           最初の投稿を作成
@@ -137,7 +137,7 @@ export function AdminPostsList({ posts }: AdminPostsListProps) {
                   {/* アクション */}
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/admin/posts/${post.id}`}
+                      href={`/posts/${post.id}`}
                       className="px-3 py-1 text-xs border border-edge text-ink rounded hover:border-ghost transition-colors"
                     >
                       編集
