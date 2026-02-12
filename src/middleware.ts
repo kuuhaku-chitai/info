@@ -1,14 +1,21 @@
 /**
- * 空白地帯 - サブドメインルーティング
+ * 空白地帯 - サブドメインルーティング + 認証ガード
  *
  * admin.localhost (開発) / admin.{domain} (本番) でアクセスされた場合、
  * 内部的に /admin/* パスに rewrite して管理画面を表示する。
  * メインドメインの /admin/* はサブドメインにリダイレクトする。
+ *
+ * admin サブドメインでは Cookie ベースの認証を要求。
+ * 未認証の場合は /login にリダイレクト。
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  getSessionCookieValue,
+  verifySessionToken,
+} from '@/lib/auth';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
 
@@ -22,8 +29,34 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // admin サブドメインからのリクエスト: /admin パスに rewrite
+  // admin サブドメインからのリクエスト
   if (hostname.startsWith('admin.')) {
+    // /login パスは認証不要で通過
+    if (pathname === '/login') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/login';
+      return NextResponse.rewrite(url);
+    }
+
+    // 認証チェック
+    const sessionSecret = process.env.SESSION_SECRET;
+    if (sessionSecret) {
+      const cookieHeader = request.headers.get('cookie');
+      const token = getSessionCookieValue(cookieHeader);
+
+      const isValid = token
+        ? await verifySessionToken(token, sessionSecret)
+        : false;
+
+      if (!isValid) {
+        // 未認証: ログインページにリダイレクト
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = '/login';
+        return NextResponse.redirect(loginUrl);
+      }
+    }
+
+    // 認証済み: /admin パスに rewrite
     const url = request.nextUrl.clone();
     url.pathname = `/admin${pathname}`;
     return NextResponse.rewrite(url);

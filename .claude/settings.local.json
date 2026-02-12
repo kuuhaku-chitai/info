@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openssl dgst:*)",
+      "Read(//Users/unicorn195/Documents/mywork/monogswork/kuuhaku-chitai/src/app/admin/**)",
+      "Bash(openssl rand:*)"
+    ]
+  }
+}
