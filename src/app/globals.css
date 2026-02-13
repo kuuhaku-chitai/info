@@ -89,6 +89,11 @@ body {
   overflow-x: hidden;
 }
 
+b,
+strong {
+  font-weight: bold !important;
+}
+
 /* ============================================
    Selection (テキスト選択)
    ============================================ */
