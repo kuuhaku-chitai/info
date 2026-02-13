@@ -166,7 +166,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
     };
 
     return (
-        <div className={`prose-void ${className}`}>
+        <div className={`prose-void ${className} whitespace-pre-wrap`}>
             <ReactMarkdown components={components}>
                 {content}
             </ReactMarkdown>
