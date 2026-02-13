@@ -2,7 +2,7 @@
 #
 # production / preview の2環境でデプロイ。
 # Next.js は opennextjs-cloudflare でビルドし Workers 上で実行する。
-# D1 は REST API、R2 は S3互換 API で接続（バインディングは将来用）。
+# D1 は REST API、R2 はバインディングで接続。
 
 name = "kuuhaku-chitai"
 compatibility_date = "2024-09-23"
@@ -34,7 +34,6 @@ CLOUDFLARE_D1_DATABASE_ID = "4774b053-1bf8-4cad-9f36-0a58bc795acb"
 R2_BUCKET_NAME = "kuuhaku-chitai-images"
 R2_PUBLIC_URL = "https://pub-6e801ebf925647f3b90e1cd4e38d766f.r2.dev"
 NEXT_PUBLIC_BASE_URL = "https://kuuhaku-chitai.net"
-ADMIN_USERNAME = "admin"
 
 # ============================================
 # Preview 環境
@@ -58,7 +57,6 @@ CLOUDFLARE_D1_DATABASE_ID = "efe9e479-5479-4df8-b5ba-07f40174a6a0"
 R2_BUCKET_NAME = "kuuhaku-chitai-images-preview"
 R2_PUBLIC_URL = "https://pub-77167c0c98424bcf8f768950cee388b3.r2.dev"
 NEXT_PUBLIC_BASE_URL = "https://preview.kuuhaku-chitai.net"
-ADMIN_USERNAME = "admin"
 
 # ============================================
 # ローカル開発設定

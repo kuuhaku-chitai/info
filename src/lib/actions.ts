@@ -13,6 +13,7 @@ import { amountToSeconds } from './constants';
 import * as db from './db';
 import { notifyLifespanExtension, notifyNewEvent } from './discord';
 import { calculateRemainingSeconds } from './countdown';
+import { getSession } from './auth';
 
 // ============================================
 // ID生成ユーティリティ
@@ -53,13 +54,16 @@ export async function fetchPostById(id: string): Promise<Post | null> {
 }
 
 export async function createNewPost(
-  data: Omit<Post, 'id' | 'updatedAt'>
+  data: Omit<Post, 'id' | 'updatedAt' | 'authorId'>
 ): Promise<Post> {
+  // セッションから著者IDを自動取得
+  const user = await getSession();
   const now = new Date().toISOString();
   const post: Post = {
     ...data,
     id: generateId(),
     updatedAt: now,
+    authorId: user?.id,
   };
 
   await db.createPost(post);
@@ -261,13 +265,16 @@ export async function fetchPostsByProjectId(projectId: string): Promise<Post[]> 
 }
 
 export async function createNewProject(
-  data: Omit<Project, 'id' | 'updatedAt'>
+  data: Omit<Project, 'id' | 'updatedAt' | 'authorId'>
 ): Promise<Project> {
+  // セッションから著者IDを自動取得
+  const user = await getSession();
   const now = new Date().toISOString();
   const project: Project = {
     ...data,
     id: generateId(),
     updatedAt: now,
+    authorId: user?.id,
   };
 
   await db.createProject(project);

@@ -2,20 +2,29 @@
  * 空白地帯 - 管理画面ダッシュボードレイアウト
  *
  * 認証済みユーザーのみ表示されるレイアウト。
- * ナビゲーションヘッダーとログアウトボタンを含む。
+ * getSession() で D1 セッションを検証し、
+ * 無効なら /login にリダイレクト。
  */
 
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import { LogoutButton } from './LogoutButton';
 
 /** サブドメインからメインサイトへのリンク用 */
 const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // D1 でセッション検証（認証ゲート）
+  const user = await getSession();
+  if (!user) {
+    redirect('/login');
+  }
+
   return (
     <>
       {/* 管理画面ヘッダー */}
@@ -80,6 +89,8 @@ export default function DashboardLayout({
                 </li>
               </ul>
             </nav>
+            {/* ユーザー名 + ログアウト */}
+            <span className="text-[10px] text-ghost">{user.displayName}</span>
             <LogoutButton />
           </div>
         </div>

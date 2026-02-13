@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type Project, type CountdownState, type Donation, type SocialLink } from '@/types';
+import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser } from '@/types';
 
 // ============================================
 // 型定義
@@ -86,11 +86,34 @@ async function getLocalDb(): Promise<import('better-sqlite3').Database> {
 
   localDb = new Database(dbPath);
 
-  // マイグレーション実行
-  const migrationPath = path.join(process.cwd(), 'migrations', '0001_initial.sql');
-  if (fs.existsSync(migrationPath)) {
-    const migration = fs.readFileSync(migrationPath, 'utf-8');
-    localDb.exec(migration);
+  // マイグレーション管理テーブル（scripts/migrate.js のスキーマに合わせる）
+  localDb.exec(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // 全マイグレーションを順番に実行（未実行のもののみ）
+  const migrationsDir = path.join(process.cwd(), 'migrations');
+  if (fs.existsSync(migrationsDir)) {
+    const files = fs.readdirSync(migrationsDir)
+      .filter((f: string) => f.endsWith('.sql'))
+      .sort();
+
+    for (const file of files) {
+      const applied = localDb.prepare('SELECT name FROM _migrations WHERE name = ?').get(file);
+      if (applied) continue;
+
+      const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+      localDb.exec(migration);
+
+      localDb.prepare('INSERT INTO _migrations (name, applied_at) VALUES (?, ?)').run(
+        file,
+        new Date().toISOString()
+      );
+    }
   }
 
   return localDb;
@@ -196,6 +219,7 @@ function rowToPost(row: DbRow): Post {
     eventEndDate: row.event_end_date as string | undefined,
     updatedAt: row.updated_at as string,
     projectId: row.project_id as string | undefined,
+    authorId: row.author_id as string | undefined,
   };
 }
 
@@ -228,8 +252,8 @@ export async function getPostById(id: string): Promise<Post | null> {
 export async function createPost(post: Omit<Post, 'updatedAt'> & { updatedAt?: string }): Promise<void> {
   const now = new Date().toISOString();
   await execute(
-    `INSERT INTO posts (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at, project_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO posts (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at, project_id, author_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       post.id,
       post.title,
@@ -243,6 +267,7 @@ export async function createPost(post: Omit<Post, 'updatedAt'> & { updatedAt?: s
       post.eventEndDate || null,
       post.updatedAt || now,
       post.projectId || null,
+      post.authorId || null,
     ]
   );
 }
@@ -289,6 +314,10 @@ export async function updatePost(
   if (update.projectId !== undefined) {
     fields.push('project_id = ?');
     values.push(update.projectId || null);
+  }
+  if (update.authorId !== undefined) {
+    fields.push('author_id = ?');
+    values.push(update.authorId || null);
   }
 
   fields.push('updated_at = ?');
@@ -490,6 +519,7 @@ function rowToProject(row: DbRow): Project {
     eventStartDate: row.event_start_date as string | undefined,
     eventEndDate: row.event_end_date as string | undefined,
     updatedAt: row.updated_at as string,
+    authorId: row.author_id as string | undefined,
   };
 }
 
@@ -513,8 +543,8 @@ export async function getProjectById(id: string): Promise<Project | null> {
 export async function createProject(project: Omit<Project, 'updatedAt'> & { updatedAt?: string }): Promise<void> {
   const now = new Date().toISOString();
   await execute(
-    `INSERT INTO projects (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO projects (id, title, date, markdown, category, tags, is_published, thumbnail_url, event_start_date, event_end_date, updated_at, author_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       project.id,
       project.title,
@@ -527,6 +557,7 @@ export async function createProject(project: Omit<Project, 'updatedAt'> & { upda
       project.eventStartDate || null,
       project.eventEndDate || null,
       project.updatedAt || now,
+      project.authorId || null,
     ]
   );
 }
@@ -570,6 +601,10 @@ export async function updateProject(
     fields.push('event_end_date = ?');
     values.push(update.eventEndDate || null);
   }
+  if (update.authorId !== undefined) {
+    fields.push('author_id = ?');
+    values.push(update.authorId || null);
+  }
 
   fields.push('updated_at = ?');
   values.push(new Date().toISOString());
@@ -593,4 +628,97 @@ export async function getPostsByProjectId(projectId: string): Promise<Post[]> {
     [projectId]
   );
   return rows.map(rowToPost);
+}
+
+// ============================================
+// 管理者ユーザー操作
+// ============================================
+
+function rowToAdminUser(row: DbRow): AdminUser {
+  return {
+    id: row.id as string,
+    username: row.username as string,
+    displayName: row.display_name as string,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+/** ユーザー名でユーザーを検索（パスワードハッシュ含む） */
+export async function getUserByUsername(
+  username: string
+): Promise<(AdminUser & { passwordHash: string }) | null> {
+  const row = await queryOne(
+    'SELECT * FROM admin_users WHERE username = ?',
+    [username]
+  );
+  if (!row) return null;
+  return {
+    ...rowToAdminUser(row),
+    passwordHash: row.password_hash as string,
+  };
+}
+
+/** IDでユーザーを取得 */
+export async function getUserById(id: string): Promise<AdminUser | null> {
+  const row = await queryOne(
+    'SELECT id, username, display_name, created_at, updated_at FROM admin_users WHERE id = ?',
+    [id]
+  );
+  return row ? rowToAdminUser(row) : null;
+}
+
+/** ユーザーを作成 */
+export async function createUser(user: {
+  id: string;
+  username: string;
+  displayName: string;
+  passwordHash: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO admin_users (id, username, display_name, password_hash, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [user.id, user.username, user.displayName, user.passwordHash, now, now]
+  );
+}
+
+// ============================================
+// セッション操作
+// ============================================
+
+/** セッションを作成 */
+export async function createDbSession(session: {
+  id: string;
+  userId: string;
+  expiresAt: string;
+}): Promise<void> {
+  await execute(
+    `INSERT INTO admin_sessions (id, user_id, expires_at) VALUES (?, ?, ?)`,
+    [session.id, session.userId, session.expiresAt]
+  );
+}
+
+/** セッションIDでユーザーを取得（有効期限チェック付き） */
+export async function getSessionWithUser(
+  sessionId: string
+): Promise<AdminUser | null> {
+  const row = await queryOne(
+    `SELECT u.id, u.username, u.display_name, u.created_at, u.updated_at
+     FROM admin_sessions s
+     JOIN admin_users u ON s.user_id = u.id
+     WHERE s.id = ? AND s.expires_at > datetime('now')`,
+    [sessionId]
+  );
+  return row ? rowToAdminUser(row) : null;
+}
+
+/** セッションを削除（ログアウト） */
+export async function deleteDbSession(sessionId: string): Promise<void> {
+  await execute('DELETE FROM admin_sessions WHERE id = ?', [sessionId]);
+}
+
+/** 期限切れセッションを削除（lazy cleanup） */
+export async function deleteExpiredSessions(): Promise<void> {
+  await execute("DELETE FROM admin_sessions WHERE expires_at <= datetime('now')");
 }

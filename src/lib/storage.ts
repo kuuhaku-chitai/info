@@ -1,83 +1,24 @@
 /**
  * 空白地帯 - オブジェクトストレージ
  *
- * R2（本番）とMinIO（ローカル）の両方に対応するS3互換ストレージ。
- * 画像のアップロード、取得、削除を管理する。
+ * R2（本番）とMinIO（ローカル）の両方に対応。
+ * 本番: R2バインディング（Cloudflare Workers ネイティブ API）
+ * 開発: MinIO（S3互換APIクライアント）
+ *
+ * 画像パス: posts/{postId}/{uuid}.{ext}
+ * - postId ごとのフォルダで投稿単位の一覧/一括削除を維持
+ * - crypto.randomUUID() で完全一意（122bit のランダム性）
  */
 
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  ListObjectsV2Command,
-  HeadObjectCommand,
-} from '@aws-sdk/client-s3';
-import crypto from 'crypto';
-
 // ============================================
-// 環境設定
+// 環境判定
 // ============================================
 
-function getStorageConfig() {
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (isProduction && process.env.CLOUDFLARE_R2_ACCESS_KEY) {
-    // R2（本番）
-    return {
-      endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY!,
-      secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_KEY!,
-      bucket: process.env.R2_BUCKET_NAME || 'kuuhaku-chitai-images',
-      publicUrl: process.env.R2_PUBLIC_URL || '',
-      region: 'auto',
-    };
-  } else {
-    // MinIO（ローカル）
-    return {
-      endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-      accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
-      secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
-      bucket: process.env.S3_BUCKET || 'kuuhaku-chitai-images',
-      publicUrl: process.env.S3_PUBLIC_URL || 'http://localhost:9000/kuuhaku-chitai-images',
-      region: 'us-east-1',
-    };
-  }
-}
-
-// ============================================
-// S3クライアント
-// ============================================
-
-let s3Client: S3Client | null = null;
-
-function getS3Client(): S3Client {
-  if (s3Client) return s3Client;
-
-  const config = getStorageConfig();
-
-  s3Client = new S3Client({
-    endpoint: config.endpoint,
-    region: config.region,
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
-    forcePathStyle: true, // MinIO互換
-  });
-
-  return s3Client;
-}
+const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================
 // ユーティリティ
 // ============================================
-
-/**
- * ランダムなハッシュ値を生成
- */
-export function generateImageHash(length: number = 16): string {
-  return crypto.randomBytes(length).toString('hex').slice(0, length);
-}
 
 /**
  * MIMEタイプから拡張子を取得
@@ -104,51 +45,186 @@ export function getImageKey(postId: string, filename: string): string {
  * 画像の公開URLを取得
  */
 export function getImageUrl(postId: string, filename: string): string {
-  const config = getStorageConfig();
   const key = getImageKey(postId, filename);
-
-  if (config.publicUrl) {
-    return `${config.publicUrl}/${key}`;
-  }
-
-  // R2のカスタムドメインを使用する場合
-  return `/${key}`;
+  const publicUrl = isProduction
+    ? (process.env.R2_PUBLIC_URL || '')
+    : (process.env.S3_PUBLIC_URL || '/images');
+  return publicUrl ? `${publicUrl}/${key}` : `/${key}`;
 }
 
 // ============================================
-// ストレージ操作
+// R2 バインディング（本番用）
 // ============================================
 
 /**
- * 画像をアップロード
+ * R2バインディングを取得
+ * getCloudflareContext() は Workers ランタイムでのみ利用可能
  */
-export async function uploadImage(
-  postId: string,
-  buffer: Buffer,
+async function getR2Bucket(): Promise<R2Bucket> {
+  const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+  const { env } = getCloudflareContext();
+  return env.R2 as R2Bucket;
+}
+
+async function uploadImageR2(
+  key: string,
+  body: Uint8Array,
   mimeType: string
-): Promise<{ url: string; filename: string; key: string }> {
-  const config = getStorageConfig();
-  const client = getS3Client();
+): Promise<void> {
+  const bucket = await getR2Bucket();
+  await bucket.put(key, body, {
+    httpMetadata: {
+      contentType: mimeType,
+      cacheControl: 'public, max-age=31536000',
+    },
+  });
+}
 
-  // ファイル名を生成
-  const hash = generateImageHash();
-  const ext = getExtensionFromMimeType(mimeType);
-  const filename = `${hash}.${ext}`;
-  const key = getImageKey(postId, filename);
+async function deleteImageR2(key: string): Promise<void> {
+  const bucket = await getR2Bucket();
+  await bucket.delete(key);
+}
 
-  // アップロード
+async function listImagesR2(prefix: string): Promise<string[]> {
+  const bucket = await getR2Bucket();
+  const result = await bucket.list({ prefix });
+  return result.objects.map((obj) => obj.key.replace(prefix, ''));
+}
+
+async function imageExistsR2(key: string): Promise<boolean> {
+  const bucket = await getR2Bucket();
+  const obj = await bucket.head(key);
+  return obj !== null;
+}
+
+// ============================================
+// S3 SDK（ローカル MinIO 用）
+// ============================================
+
+let s3ClientInstance: import('@aws-sdk/client-s3').S3Client | null = null;
+
+function getLocalConfig() {
+  return {
+    endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+    accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
+    secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
+    bucket: process.env.S3_BUCKET || 'kuuhaku-chitai-images',
+    region: 'us-east-1',
+  };
+}
+
+async function getS3Client(): Promise<import('@aws-sdk/client-s3').S3Client> {
+  if (s3ClientInstance) return s3ClientInstance;
+
+  const { S3Client } = await import('@aws-sdk/client-s3');
+  const config = getLocalConfig();
+
+  s3ClientInstance = new S3Client({
+    endpoint: config.endpoint,
+    region: config.region,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+    forcePathStyle: true,
+  });
+
+  return s3ClientInstance;
+}
+
+async function uploadImageS3(
+  key: string,
+  body: Uint8Array,
+  mimeType: string
+): Promise<void> {
+  const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const config = getLocalConfig();
+  const client = await getS3Client();
+
   await client.send(
     new PutObjectCommand({
       Bucket: config.bucket,
       Key: key,
-      Body: buffer,
+      Body: body,
       ContentType: mimeType,
-      CacheControl: 'public, max-age=31536000', // 1年キャッシュ
+      CacheControl: 'public, max-age=31536000',
+    })
+  );
+}
+
+async function deleteImageS3(key: string): Promise<void> {
+  const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+  const config = getLocalConfig();
+  const client = await getS3Client();
+
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    })
+  );
+}
+
+async function listImagesS3(prefix: string): Promise<string[]> {
+  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+  const config = getLocalConfig();
+  const client = await getS3Client();
+
+  const result = await client.send(
+    new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: prefix,
     })
   );
 
-  const url = getImageUrl(postId, filename);
+  if (!result.Contents) return [];
+  return result.Contents
+    .filter((obj) => obj.Key)
+    .map((obj) => obj.Key!.replace(prefix, ''));
+}
 
+async function imageExistsS3(key: string): Promise<boolean> {
+  const { HeadObjectCommand } = await import('@aws-sdk/client-s3');
+  const config = getLocalConfig();
+  const client = await getS3Client();
+
+  try {
+    await client.send(
+      new HeadObjectCommand({
+        Bucket: config.bucket,
+        Key: key,
+      })
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================
+// 統合ストレージ操作
+// ============================================
+
+/**
+ * 画像をアップロード
+ * ファイル名は crypto.randomUUID() で一意に生成
+ */
+export async function uploadImage(
+  postId: string,
+  body: Uint8Array,
+  mimeType: string
+): Promise<{ url: string; filename: string; key: string }> {
+  const ext = getExtensionFromMimeType(mimeType);
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const key = getImageKey(postId, filename);
+
+  if (isProduction) {
+    await uploadImageR2(key, body, mimeType);
+  } else {
+    await uploadImageS3(key, body, mimeType);
+  }
+
+  const url = getImageUrl(postId, filename);
   return { url, filename, key };
 }
 
@@ -159,17 +235,14 @@ export async function deleteImage(
   postId: string,
   filename: string
 ): Promise<boolean> {
-  const config = getStorageConfig();
-  const client = getS3Client();
   const key = getImageKey(postId, filename);
 
   try {
-    await client.send(
-      new DeleteObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-      })
-    );
+    if (isProduction) {
+      await deleteImageR2(key);
+    } else {
+      await deleteImageS3(key);
+    }
     return true;
   } catch (error) {
     console.error('Failed to delete image:', error);
@@ -181,32 +254,21 @@ export async function deleteImage(
  * 投稿に関連するすべての画像を削除
  */
 export async function deleteAllPostImages(postId: string): Promise<boolean> {
-  const config = getStorageConfig();
-  const client = getS3Client();
   const prefix = `posts/${postId}/`;
 
   try {
-    // 画像一覧を取得
-    const listResult = await client.send(
-      new ListObjectsV2Command({
-        Bucket: config.bucket,
-        Prefix: prefix,
-      })
-    );
+    const filenames = isProduction
+      ? await listImagesR2(prefix)
+      : await listImagesS3(prefix);
 
-    if (!listResult.Contents || listResult.Contents.length === 0) {
-      return true;
-    }
+    if (filenames.length === 0) return true;
 
-    // 各画像を削除
-    for (const object of listResult.Contents) {
-      if (object.Key) {
-        await client.send(
-          new DeleteObjectCommand({
-            Bucket: config.bucket,
-            Key: object.Key,
-          })
-        );
+    for (const filename of filenames) {
+      const key = `${prefix}${filename}`;
+      if (isProduction) {
+        await deleteImageR2(key);
+      } else {
+        await deleteImageS3(key);
       }
     }
 
@@ -221,25 +283,12 @@ export async function deleteAllPostImages(postId: string): Promise<boolean> {
  * 投稿の画像一覧を取得
  */
 export async function listPostImages(postId: string): Promise<string[]> {
-  const config = getStorageConfig();
-  const client = getS3Client();
   const prefix = `posts/${postId}/`;
 
   try {
-    const result = await client.send(
-      new ListObjectsV2Command({
-        Bucket: config.bucket,
-        Prefix: prefix,
-      })
-    );
-
-    if (!result.Contents) {
-      return [];
-    }
-
-    return result.Contents
-      .filter((obj) => obj.Key)
-      .map((obj) => obj.Key!.replace(prefix, ''));
+    return isProduction
+      ? await listImagesR2(prefix)
+      : await listImagesS3(prefix);
   } catch (error) {
     console.error('Failed to list post images:', error);
     return [];
@@ -253,18 +302,12 @@ export async function imageExists(
   postId: string,
   filename: string
 ): Promise<boolean> {
-  const config = getStorageConfig();
-  const client = getS3Client();
   const key = getImageKey(postId, filename);
 
   try {
-    await client.send(
-      new HeadObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-      })
-    );
-    return true;
+    return isProduction
+      ? await imageExistsR2(key)
+      : await imageExistsS3(key);
   } catch {
     return false;
   }

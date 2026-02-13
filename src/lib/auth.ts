@@ -1,13 +1,16 @@
 /**
  * 空白地帯 - 認証ユーティリティ
  *
- * Cloudflare Workers 互換のステートレスセッション認証。
- * Web Crypto API のみを使用（bcrypt/argon2 は Workers で使用不可）。
+ * D1 セッションベースの認証。複数管理者対応。
+ * パスワードは PBKDF2-SHA256（10万回イテレーション）でハッシュ化。
+ * Web Crypto API のみ使用（Cloudflare Workers 互換）。
  *
- * セッショントークン形式: {expiresAt_unix}.{hmac_hex}
- * - expiresAt: UNIX タイムスタンプ（秒）
- * - hmac: expiresAt を SESSION_SECRET で HMAC-SHA256 署名した hex 文字列
+ * パスワードハッシュ保存形式: pbkdf2:100000:{salt_hex}:{hash_hex}
  */
+
+import { cookies } from 'next/headers';
+import type { AdminUser } from '@/types';
+import * as db from './db';
 
 // セッション有効期限: 24時間
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
@@ -15,107 +18,115 @@ const SESSION_TTL_SECONDS = 24 * 60 * 60;
 // Cookie 名
 const COOKIE_NAME = 'admin_session';
 
-// --- パスワード関連 ---
+// PBKDF2 設定
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_HASH = 'SHA-256';
+const SALT_LENGTH = 16; // 128 bits
+
+// ============================================
+// パスワードハッシュ（PBKDF2）
+// ============================================
 
 /**
- * パスワードを SHA-256 でハッシュ化（hex 文字列で返す）
- * 初期パスワードハッシュ生成時に使用。
+ * パスワードを PBKDF2-SHA256 でハッシュ化
+ * 返り値: "pbkdf2:100000:{salt_hex}:{hash_hex}"
  */
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return bufferToHex(hashBuffer);
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const hash = await derivePbkdf2(password, salt);
+  return `pbkdf2:${PBKDF2_ITERATIONS}:${bufferToHex(salt)}:${bufferToHex(hash)}`;
 }
 
 /**
  * パスワードをタイミングセーフに検証
- *
- * 直接の文字列比較はタイミング攻撃に脆弱なため、
- * HMAC を経由して一定時間で比較する。
- * 原理: HMAC(key, plainHash) === HMAC(key, storedHash) をバイト単位 XOR で比較
+ * 保存形式をパースし、同じ salt + iterations で導出して比較
  */
 export async function verifyPassword(
   plainPassword: string,
-  storedHash: string,
-  secret: string
+  storedHash: string
 ): Promise<boolean> {
-  const plainHash = await hashPassword(plainPassword);
+  const parts = storedHash.split(':');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
 
-  // HMAC 署名を使って一定時間比較を実現
-  const key = await importHmacKey(secret);
+  const iterations = parseInt(parts[1], 10);
+  const salt = hexToBuffer(parts[2]);
+  const expectedHash = hexToBuffer(parts[3]);
+
+  const derivedHash = await derivePbkdf2(plainPassword, salt, iterations);
+
+  // HMAC 経由のタイミングセーフ比較
+  // hex 文字列に変換してからHMACで署名し、バイト単位XORで判定
+  const derivedHex = bufferToHex(derivedHash);
+  const expectedHex = bufferToHex(expectedHash);
+
   const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode('timing-safe-compare'),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
 
-  const sig1 = await crypto.subtle.sign('HMAC', key, encoder.encode(plainHash));
-  const sig2 = await crypto.subtle.sign('HMAC', key, encoder.encode(storedHash));
+  const sig1 = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(derivedHex)));
+  const sig2 = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(expectedHex)));
 
-  return timingSafeEqual(new Uint8Array(sig1), new Uint8Array(sig2));
+  return timingSafeEqual(sig1, sig2);
 }
 
-// --- セッショントークン ---
+// ============================================
+// セッション管理（D1）
+// ============================================
 
 /**
- * セッショントークンを生成
- * 形式: {expiresAt}.{hmac_hex}
+ * D1 にセッションを作成し、セッション ID を返す
  */
-export async function createSessionToken(secret: string): Promise<string> {
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
-  const key = await importHmacKey(secret);
-  const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(String(expiresAt))
-  );
-  const hmacHex = bufferToHex(signature);
-  return `${expiresAt}.${hmacHex}`;
+export async function createSession(userId: string): Promise<string> {
+  // lazy cleanup: ログイン時に期限切れセッションを掃除
+  await db.deleteExpiredSessions();
+
+  const sessionId = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
+
+  await db.createDbSession({
+    id: sessionId,
+    userId,
+    expiresAt,
+  });
+
+  return sessionId;
 }
 
 /**
- * セッショントークンを検証
- * - HMAC 署名が正しいか
- * - 有効期限内か
+ * D1 からセッションを削除（ログアウト）
  */
-export async function verifySessionToken(
-  token: string,
-  secret: string
-): Promise<boolean> {
-  const dotIndex = token.indexOf('.');
-  if (dotIndex === -1) return false;
-
-  const expiresAtStr = token.substring(0, dotIndex);
-  const providedHmac = token.substring(dotIndex + 1);
-
-  // 有効期限チェック
-  const expiresAt = parseInt(expiresAtStr, 10);
-  if (isNaN(expiresAt)) return false;
-  if (Math.floor(Date.now() / 1000) > expiresAt) return false;
-
-  // HMAC 検証（タイミングセーフ）
-  const key = await importHmacKey(secret);
-  const encoder = new TextEncoder();
-  const expectedSig = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(expiresAtStr)
-  );
-  const expectedHex = bufferToHex(expectedSig);
-
-  // HMAC 同士をさらに HMAC で比較（タイミングセーフ）
-  const sig1 = await crypto.subtle.sign('HMAC', key, encoder.encode(providedHmac));
-  const sig2 = await crypto.subtle.sign('HMAC', key, encoder.encode(expectedHex));
-
-  return timingSafeEqual(new Uint8Array(sig1), new Uint8Array(sig2));
+export async function deleteSession(sessionId: string): Promise<void> {
+  await db.deleteDbSession(sessionId);
 }
 
-// --- Cookie ---
+/**
+ * 現在のリクエストのセッションからユーザーを取得
+ * Server Component / Server Action からのみ呼び出し可能
+ * （next/headers の cookies() を使用するため）
+ */
+export async function getSession(): Promise<AdminUser | null> {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(COOKIE_NAME);
+  if (!sessionCookie?.value) return null;
+
+  return db.getSessionWithUser(sessionCookie.value);
+}
+
+// ============================================
+// Cookie ヘルパー
+// ============================================
 
 /**
  * セッション Cookie の Set-Cookie ヘッダー値を生成
  */
-export function createSessionCookie(token: string, isSecure: boolean): string {
+export function createSessionCookie(sessionId: string, isSecure: boolean): string {
   const parts = [
-    `${COOKIE_NAME}=${token}`,
+    `${COOKIE_NAME}=${sessionId}`,
     'HttpOnly',
     'SameSite=Lax',
     'Path=/',
@@ -145,15 +156,16 @@ export function clearSessionCookie(isSecure: boolean): string {
 }
 
 /**
- * Cookie ヘッダーからセッショントークンを抽出
+ * Cookie ヘッダー文字列からセッション ID を抽出
+ * （middleware 用: cookies() が使えない場面向け）
  */
 export function getSessionCookieValue(
   cookieHeader: string | null
 ): string | null {
   if (!cookieHeader) return null;
 
-  const cookies = cookieHeader.split(';');
-  for (const cookie of cookies) {
+  const cookiePairs = cookieHeader.split(';');
+  for (const cookie of cookiePairs) {
     const [name, ...valueParts] = cookie.trim().split('=');
     if (name === COOKIE_NAME) {
       const value = valueParts.join('=');
@@ -163,23 +175,45 @@ export function getSessionCookieValue(
   return null;
 }
 
-// --- 内部ヘルパー ---
+// ============================================
+// 内部ヘルパー
+// ============================================
 
-/** HMAC-SHA256 キーをインポート */
-async function importHmacKey(secret: string): Promise<CryptoKey> {
+/** PBKDF2 で鍵導出 */
+async function derivePbkdf2(
+  password: string,
+  salt: Uint8Array,
+  iterations: number = PBKDF2_ITERATIONS
+): Promise<Uint8Array> {
   const encoder = new TextEncoder();
-  return crypto.subtle.importKey(
+  const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    encoder.encode(password),
+    'PBKDF2',
     false,
-    ['sign']
+    ['deriveBits']
   );
+
+  // salt を ArrayBuffer に変換（TypeScript の Uint8Array ジェネリクス対策）
+  const saltBuffer = salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength) as ArrayBuffer;
+
+  const derived = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBuffer,
+      iterations,
+      hash: PBKDF2_HASH,
+    },
+    keyMaterial,
+    256 // 32 bytes
+  );
+
+  return new Uint8Array(derived);
 }
 
-/** ArrayBuffer を hex 文字列に変換 */
-function bufferToHex(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
+/** ArrayBuffer / Uint8Array を hex 文字列に変換 */
+function bufferToHex(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let hex = '';
   for (let i = 0; i < bytes.length; i++) {
     hex += bytes[i].toString(16).padStart(2, '0');
@@ -187,9 +221,18 @@ function bufferToHex(buffer: ArrayBuffer): string {
   return hex;
 }
 
+/** hex 文字列を Uint8Array に変換 */
+function hexToBuffer(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
 /**
  * タイミングセーフなバイト列比較
- * XOR で全バイトを比較し、結果を最後にまとめて判定。
+ * XOR で全バイトを比較し、結果を最後にまとめて判定
  */
 function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;

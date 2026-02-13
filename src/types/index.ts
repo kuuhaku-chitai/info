@@ -6,6 +6,22 @@
  */
 
 // ============================================
+// 認証
+// ============================================
+
+/**
+ * 管理者ユーザー
+ * パスワードハッシュは含まない（クライアントに渡さないため）
+ */
+export interface AdminUser {
+  id: string;
+  username: string;
+  displayName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // KV Data Schema
 // ============================================
 
@@ -48,6 +64,8 @@ export interface Post {
   updatedAt: string;
   /** 紐づくプロジェクトID（紐づいた投稿は /blog に表示されない） */
   projectId?: string;
+  /** 著者ID（管理者ユーザーへの参照） */
+  authorId?: string;
 }
 
 // ============================================
@@ -70,6 +88,8 @@ export interface Project {
   eventStartDate?: string;
   eventEndDate?: string;
   updatedAt: string;
+  /** 著者ID（管理者ユーザーへの参照） */
+  authorId?: string;
 }
 
 /**
