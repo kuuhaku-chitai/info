@@ -5,14 +5,16 @@
  * - カウントダウン残り時間
  * - 最近の入金
  * - 投稿数
+ * - 寿命計算設定（編集可能）
  */
 
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { CountdownServer } from '@/components/countdown';
 import { fetchStats, fetchCountdownState } from '@/lib/actions';
-import { MONTHLY_COST, SECONDS_PER_MONTH, INITIAL_TOTAL_SECONDS } from '@/lib/constants';
+import { SECONDS_PER_MONTH } from '@/lib/constants';
 import { calculateRemainingSeconds } from '@/lib/countdown';
+import { CountdownSettingsForm } from './CountdownSettingsForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,9 @@ export default async function AdminDashboardPage() {
   // 残り時間を計算
   const remainingSeconds = calculateRemainingSeconds(countdown);
   const remainingMonths = (remainingSeconds / SECONDS_PER_MONTH).toFixed(1);
+
+  // DB から初期寿命を取得（定数ではなくDBの値を使用）
+  const initialLifespanDays = Math.floor(countdown.initialTotalSeconds / (24 * 60 * 60));
 
   return (
     <div className="space-y-8">
@@ -96,7 +101,7 @@ export default async function AdminDashboardPage() {
         <div className="p-4 border border-edge rounded">
           <p className="text-xs text-ghost">初期寿命</p>
           <p className="text-lg font-light text-ink mt-1">
-            {Math.floor(INITIAL_TOTAL_SECONDS / (24 * 60 * 60))}日
+            {initialLifespanDays}日
           </p>
         </div>
       </div>
@@ -120,15 +125,10 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 計算式の説明 */}
-      <div className="text-xs text-ghost space-y-1 pt-8 border-t border-edge">
-        <p>寿命計算式:</p>
-        <p className="font-mono">
-          初期: ¥2,300,000 / ¥{MONTHLY_COST.toLocaleString()}/月 × {Math.floor(SECONDS_PER_MONTH / (24 * 60 * 60))}日/月 = {Math.floor(INITIAL_TOTAL_SECONDS / (24 * 60 * 60))}日
-        </p>
-        <p className="font-mono">
-          延命: 入金額 / ¥{MONTHLY_COST.toLocaleString()} × {Math.floor(SECONDS_PER_MONTH / (24 * 60 * 60))}日
-        </p>
+      {/* 寿命計算設定 */}
+      <div className="pt-8 border-t border-edge">
+        <h2 className="text-sm font-medium text-ink mb-4">寿命計算設定</h2>
+        <CountdownSettingsForm countdown={countdown} />
       </div>
     </div>
   );

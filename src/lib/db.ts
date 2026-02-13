@@ -177,6 +177,8 @@ export async function getCountdown(): Promise<CountdownState> {
     start_date: string;
     initial_total_seconds: number;
     added_seconds: number;
+    monthly_cost: number;
+    initial_fund: number;
     updated_at: string;
   }>('SELECT * FROM countdown WHERE id = 1');
 
@@ -188,6 +190,8 @@ export async function getCountdown(): Promise<CountdownState> {
     startDate: row.start_date,
     initialTotalSeconds: row.initial_total_seconds,
     addedSeconds: row.added_seconds,
+    monthlyCost: row.monthly_cost,
+    initialFund: row.initial_fund,
     updatedAt: row.updated_at,
   };
 }
@@ -639,6 +643,7 @@ function rowToAdminUser(row: DbRow): AdminUser {
     id: row.id as string,
     username: row.username as string,
     displayName: row.display_name as string,
+    avatarUrl: (row.avatar_url as string) || undefined,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -662,7 +667,7 @@ export async function getUserByUsername(
 /** IDでユーザーを取得 */
 export async function getUserById(id: string): Promise<AdminUser | null> {
   const row = await queryOne(
-    'SELECT id, username, display_name, created_at, updated_at FROM admin_users WHERE id = ?',
+    'SELECT id, username, display_name, avatar_url, created_at, updated_at FROM admin_users WHERE id = ?',
     [id]
   );
   return row ? rowToAdminUser(row) : null;
@@ -704,7 +709,7 @@ export async function getSessionWithUser(
   sessionId: string
 ): Promise<AdminUser | null> {
   const row = await queryOne(
-    `SELECT u.id, u.username, u.display_name, u.created_at, u.updated_at
+    `SELECT u.id, u.username, u.display_name, u.avatar_url, u.created_at, u.updated_at
      FROM admin_sessions s
      JOIN admin_users u ON s.user_id = u.id
      WHERE s.id = ? AND s.expires_at > datetime('now')`,
@@ -721,4 +726,83 @@ export async function deleteDbSession(sessionId: string): Promise<void> {
 /** 期限切れセッションを削除（lazy cleanup） */
 export async function deleteExpiredSessions(): Promise<void> {
   await execute("DELETE FROM admin_sessions WHERE expires_at <= datetime('now')");
+}
+
+/** 全ユーザー一覧を取得 */
+export async function getAllUsers(): Promise<AdminUser[]> {
+  const rows = await query(
+    'SELECT id, username, display_name, avatar_url, created_at, updated_at FROM admin_users ORDER BY created_at ASC'
+  );
+  return rows.map(rowToAdminUser);
+}
+
+/** ユーザー情報を更新 */
+export async function updateUser(
+  id: string,
+  update: { displayName?: string; avatarUrl?: string | null; passwordHash?: string }
+): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.displayName !== undefined) {
+    fields.push('display_name = ?');
+    values.push(update.displayName);
+  }
+  if (update.avatarUrl !== undefined) {
+    fields.push('avatar_url = ?');
+    values.push(update.avatarUrl);
+  }
+  if (update.passwordHash !== undefined) {
+    fields.push('password_hash = ?');
+    values.push(update.passwordHash);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(
+    `UPDATE admin_users SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+/** カウントダウン設定を更新（開始日、初期総秒数、月額コスト、初期資金） */
+export async function updateCountdownSettings(data: {
+  startDate?: string;
+  initialTotalSeconds?: number;
+  monthlyCost?: number;
+  initialFund?: number;
+}): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (data.startDate !== undefined) {
+    fields.push('start_date = ?');
+    values.push(data.startDate);
+  }
+  if (data.initialTotalSeconds !== undefined) {
+    fields.push('initial_total_seconds = ?');
+    values.push(data.initialTotalSeconds);
+  }
+  if (data.monthlyCost !== undefined) {
+    fields.push('monthly_cost = ?');
+    values.push(data.monthlyCost);
+  }
+  if (data.initialFund !== undefined) {
+    fields.push('initial_fund = ?');
+    values.push(data.initialFund);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+
+  await execute(
+    `UPDATE countdown SET ${fields.join(', ')} WHERE id = 1`,
+    values
+  );
 }

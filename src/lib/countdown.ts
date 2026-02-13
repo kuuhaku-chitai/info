@@ -7,7 +7,7 @@
  */
 
 import { type CountdownState } from '@/types';
-import { INITIAL_TOTAL_SECONDS, amountToSeconds } from './constants';
+import { INITIAL_TOTAL_SECONDS, MONTHLY_COST, INITIAL_FUND, amountToSeconds } from './constants';
 
 /**
  * デフォルトのカウントダウン状態を生成
@@ -22,6 +22,8 @@ export function createInitialCountdownState(
     startDate,
     initialTotalSeconds: INITIAL_TOTAL_SECONDS,
     addedSeconds: 0,
+    monthlyCost: MONTHLY_COST,
+    initialFund: INITIAL_FUND,
     updatedAt: new Date().toISOString(),
   };
 }

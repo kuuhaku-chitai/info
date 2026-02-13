@@ -8,8 +8,8 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Project, type Donation, type CountdownState, type SocialLink } from '@/types';
-import { amountToSeconds } from './constants';
+import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser } from '@/types';
+import { SECONDS_PER_MONTH } from './constants';
 import * as db from './db';
 import { notifyLifespanExtension, notifyNewEvent } from './discord';
 import { calculateRemainingSeconds } from './countdown';
@@ -138,7 +138,10 @@ export async function fetchAllDonations(): Promise<Donation[]> {
 export async function recordNewDonation(
   data: Omit<Donation, 'id' | 'addedSeconds'>
 ): Promise<Donation> {
-  const addedSeconds = amountToSeconds(data.amount);
+  // DBの月額コストを使って秒数を計算（定数のamountToSecondsはフォールバック）
+  const countdown = await db.getCountdown();
+  const dynamicMonthlyCost = countdown.monthlyCost;
+  const addedSeconds = Math.floor((data.amount / dynamicMonthlyCost) * SECONDS_PER_MONTH);
   const addedDays = Math.floor(addedSeconds / (24 * 60 * 60));
 
   const donation: Donation = {
@@ -150,7 +153,6 @@ export async function recordNewDonation(
   await db.createDonation(donation);
 
   // 延命通知をDiscordに送信
-  const countdown = await db.getCountdown();
   const remainingSeconds = calculateRemainingSeconds(countdown);
   const remainingDays = Math.floor(remainingSeconds / (24 * 60 * 60));
 
@@ -318,4 +320,82 @@ export async function deleteExistingProject(id: string): Promise<boolean> {
   revalidatePath('/');
 
   return true;
+}
+
+// ============================================
+// ユーザー管理 Actions
+// ============================================
+
+export async function fetchAllUsers(): Promise<AdminUser[]> {
+  return db.getAllUsers();
+}
+
+export async function fetchUserById(id: string): Promise<AdminUser | null> {
+  return db.getUserById(id);
+}
+
+export async function updateExistingUser(
+  id: string,
+  data: { displayName?: string; avatarUrl?: string | null; newPassword?: string }
+): Promise<AdminUser | null> {
+  const existing = await db.getUserById(id);
+  if (!existing) return null;
+
+  const updateData: { displayName?: string; avatarUrl?: string | null; passwordHash?: string } = {};
+
+  if (data.displayName !== undefined) {
+    updateData.displayName = data.displayName;
+  }
+  if (data.avatarUrl !== undefined) {
+    updateData.avatarUrl = data.avatarUrl;
+  }
+  if (data.newPassword) {
+    // パスワード変更時はハッシュ化
+    const { hashPassword } = await import('./auth');
+    updateData.passwordHash = await hashPassword(data.newPassword);
+  }
+
+  await db.updateUser(id, updateData);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/users');
+
+  return db.getUserById(id);
+}
+
+// ============================================
+// カウントダウン設定 Actions
+// ============================================
+
+export async function updateCountdownSettingsAction(data: {
+  startDate?: string;
+  monthlyCost?: number;
+  initialFund?: number;
+}): Promise<CountdownState> {
+  const updateData: Parameters<typeof db.updateCountdownSettings>[0] = {};
+
+  if (data.startDate !== undefined) {
+    updateData.startDate = data.startDate;
+  }
+  if (data.monthlyCost !== undefined) {
+    updateData.monthlyCost = data.monthlyCost;
+  }
+  if (data.initialFund !== undefined) {
+    updateData.initialFund = data.initialFund;
+  }
+
+  // monthlyCost/initialFund が変わった場合、initialTotalSeconds を再計算
+  if (data.monthlyCost !== undefined || data.initialFund !== undefined) {
+    const current = await db.getCountdown();
+    const monthlyCost = data.monthlyCost ?? current.monthlyCost;
+    const initialFund = data.initialFund ?? current.initialFund;
+    updateData.initialTotalSeconds = Math.floor((initialFund / monthlyCost) * SECONDS_PER_MONTH);
+  }
+
+  await db.updateCountdownSettings(updateData);
+
+  revalidatePath('/admin');
+  revalidatePath('/');
+
+  return db.getCountdown();
 }

@@ -17,6 +17,7 @@ export interface AdminUser {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +104,10 @@ export interface CountdownState {
   initialTotalSeconds: number;
   /** 延命により追加された秒数の累計 */
   addedSeconds: number;
+  /** 月額コスト（円） */
+  monthlyCost: number;
+  /** 初期資金（円） */
+  initialFund: number;
   /** 最終更新日時 */
   updatedAt: string;
 }

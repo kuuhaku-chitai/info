@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { LogoutButton } from './LogoutButton';
+import { UserMenu } from './UserMenu';
 
 /** サブドメインからメインサイトへのリンク用 */
 const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -80,6 +80,14 @@ export default async function DashboardLayout({
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    href="/users"
+                    className="hover:text-ink transition-colors"
+                  >
+                    ユーザー
+                  </Link>
+                </li>
+                <li>
                   <a
                     href={siteUrl}
                     className="hover:text-ink transition-colors"
@@ -89,9 +97,8 @@ export default async function DashboardLayout({
                 </li>
               </ul>
             </nav>
-            {/* ユーザー名 + ログアウト */}
-            <span className="text-[10px] text-ghost">{user.displayName}</span>
-            <LogoutButton />
+            {/* ユーザーメニュー（アバター + ドロップダウン） */}
+            <UserMenu user={{ displayName: user.displayName, avatarUrl: user.avatarUrl }} />
           </div>
         </div>
       </header>
