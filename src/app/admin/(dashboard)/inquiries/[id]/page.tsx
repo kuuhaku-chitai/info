@@ -6,7 +6,7 @@
  */
 
 import { notFound } from 'next/navigation';
-import { fetchInquiryById, markInquiryAsRead } from '@/lib/actions';
+import { fetchInquiryById } from '@/lib/actions';
 import { InquiryActions } from './InquiryActions';
 
 export const dynamic = 'force-dynamic';
@@ -30,11 +30,6 @@ export default async function InquiryDetailPage({
 
   if (!inquiry) {
     notFound();
-  }
-
-  // 未読なら自動で既読にする
-  if (!inquiry.isRead) {
-    await markInquiryAsRead(id);
   }
 
   return (

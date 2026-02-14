@@ -6,9 +6,9 @@
  * 管理者メモ保存・返信済みマーク。
  */
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { markInquiryAsReplied, updateInquiryNote } from '@/lib/actions';
+import { markInquiryAsRead, markInquiryAsReplied, updateInquiryNote } from '@/lib/actions';
 import type { ContactInquiry } from '@/types';
 
 interface InquiryActionsProps {
@@ -20,6 +20,15 @@ export function InquiryActions({ inquiry }: InquiryActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [note, setNote] = useState(inquiry.adminNote || '');
   const [success, setSuccess] = useState<string | null>(null);
+
+  // マウント時に未読なら既読にする
+  useEffect(() => {
+    if (!inquiry.isRead) {
+      markInquiryAsRead(inquiry.id).then(() => {
+        router.refresh();
+      });
+    }
+  }, [inquiry.id, inquiry.isRead, router]);
 
   function handleSaveNote(e: React.FormEvent) {
     e.preventDefault();
