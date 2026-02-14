@@ -4,11 +4,15 @@
  * 空白地帯 - MarkdownRenderer
  *
  * Markdownテキストを適切にレンダリングするコンポーネント。
- * react-markdownを使用して完全なMarkdownサポートを提供。
+ * react-markdown + remark-gfm（テーブル・打消し線等）
+ *                + remark-math / rehype-katex（LaTeX数式）
  * 「空白地帯」のデザインコンセプトに合わせたスタイリング。
  */
 
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import Image from 'next/image';
 import type { Components } from 'react-markdown';
 import { getOptimizedImageUrl } from '@/lib/utils';
@@ -57,6 +61,10 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         em: ({ children }) => (
             <em className="italic text-ghost">{children}</em>
         ),
+        // GFM打消し線
+        del: ({ children }) => (
+            <del className="text-ghost line-through">{children}</del>
+        ),
 
         // リンク
         a: ({ href, children }) => (
@@ -93,8 +101,8 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         ),
 
         // コード
-        code: ({ className, children }) => {
-            const isBlock = className?.includes('language-');
+        code: ({ className: codeClassName, children }) => {
+            const isBlock = codeClassName?.includes('language-');
             if (isBlock) {
                 return (
                     <code className="block bg-[#f5f5f5] p-4 rounded text-xs font-mono overflow-x-auto my-4">
@@ -118,7 +126,6 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         img: ({ src, alt }) => {
             if (!src || typeof src !== 'string') return null;
 
-            // 画像URLを最適化
             const imageSrc = getOptimizedImageUrl(src);
 
             return (
@@ -140,7 +147,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             <hr className="border-t border-edge my-8" />
         ),
 
-        // テーブル
+        // テーブル（GFM）
         table: ({ children }) => (
             <div className="overflow-x-auto my-6">
                 <table className="w-full text-sm border-collapse">
@@ -166,8 +173,12 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
     };
 
     return (
-        <div className={`prose-void ${className} whitespace-pre-wrap`}>
-            <ReactMarkdown components={components}>
+        <div className={`prose-void ${className}`}>
+            <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={components}
+            >
                 {content}
             </ReactMarkdown>
         </div>

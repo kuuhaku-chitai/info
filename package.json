@@ -26,6 +26,9 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "simplex-noise": "^4.0.3",
     "three": "^0.182.0"
   },
