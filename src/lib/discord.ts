@@ -13,13 +13,14 @@
 
 import { type NotificationType, type DiscordNotificationPayload } from '@/types';
 import { DISCORD_COLORS } from './constants';
+import { getEnv } from './env';
 
 /**
  * Discord Webhook URLを取得
  * 環境変数から取得し、未設定の場合はエラーをログ出力して処理を続行
  */
-function getWebhookUrl(): string | null {
-  const url = process.env.DISCORD_WEBHOOK_URL;
+async function getWebhookUrl(): Promise<string | null> {
+  const url = await getEnv('DISCORD_WEBHOOK_URL');
   if (!url) {
     console.warn('[Discord] DISCORD_WEBHOOK_URL is not set. Notification skipped.');
     return null;
@@ -47,7 +48,7 @@ function getWebhookUrl(): string | null {
 export async function sendDiscordNotification(
   payload: DiscordNotificationPayload
 ): Promise<boolean> {
-  const webhookUrl = getWebhookUrl();
+  const webhookUrl = await getWebhookUrl();
   if (!webhookUrl) {
     return false;
   }
@@ -60,16 +61,16 @@ export async function sendDiscordNotification(
     content: message,
     embeds: embed
       ? [
-          {
-            title: embed.title,
-            description: embed.description,
-            color: embed.color ?? DISCORD_COLORS[type],
-            timestamp: embed.timestamp ?? new Date().toISOString(),
-            footer: {
-              text: '空白地帯',
-            },
+        {
+          title: embed.title,
+          description: embed.description,
+          color: embed.color ?? DISCORD_COLORS[type],
+          timestamp: embed.timestamp ?? new Date().toISOString(),
+          footer: {
+            text: '空白地帯',
           },
-        ]
+        },
+      ]
       : undefined,
   };
 

@@ -419,19 +419,22 @@ export async function submitContactInquiry(data: {
   const inquiry = await db.getInquiryById(id);
   if (!inquiry) throw new Error('Failed to create inquiry');
 
-  // メール送信（失敗しても問い合わせ自体は成功扱い）
+  // 2. メールおよびDiscord通知を並行して実行し、すべて完了するまで待機する
+  // (Cloudflare Workers 等の環境で、応答を返す前に処理が中断されるのを防ぐ)
   const { sendAutoReply, sendAdminNotification } = await import('./email');
-  sendAutoReply(data.email, data.name, data.inquiryType, data.message).catch(
-    (err) => console.error('[Inquiry] Auto-reply failed:', err)
-  );
-  sendAdminNotification(inquiry).catch(
-    (err) => console.error('[Inquiry] Admin notification failed:', err)
-  );
 
-  // Discord通知
-  notifyNewInquiry(data.name, data.inquiryType).catch(
-    (err) => console.error('[Inquiry] Discord notification failed:', err)
-  );
+  await Promise.allSettled([
+    sendAutoReply(data.email, data.name, data.inquiryType, data.message),
+    sendAdminNotification(inquiry),
+    notifyNewInquiry(data.name, data.inquiryType)
+  ]).then((results) => {
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const labels = ['Auto-reply', 'Admin notification', 'Discord notification'];
+        console.error(`[Inquiry] ${labels[index]} failed:`, result.reason);
+      }
+    });
+  });
 
   return inquiry;
 }

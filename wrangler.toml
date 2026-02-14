@@ -37,6 +37,21 @@ NEXT_PUBLIC_BASE_URL = "https://kuuhaku-chitai.net"
 # Turnstile Site Key（Cloudflareダッシュボードで作成後に設定）
 NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAACcR2K-SFVedsnWU"
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
 # ============================================
 # Preview 環境
 # ============================================
