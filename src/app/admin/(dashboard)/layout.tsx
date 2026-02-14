@@ -81,6 +81,14 @@ export default async function DashboardLayout({
                 </li>
                 <li>
                   <Link
+                    href="/inquiries"
+                    className="hover:text-ink transition-colors"
+                  >
+                    問い合わせ
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/users"
                     className="hover:text-ink transition-colors"
                   >

@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser } from '@/types';
+import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType } from '@/types';
 
 // ============================================
 // 型定義
@@ -767,6 +767,126 @@ export async function updateUser(
     `UPDATE admin_users SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+}
+
+// ============================================
+// 問い合わせ操作
+// ============================================
+
+function rowToInquiry(row: DbRow): ContactInquiry {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    email: row.email as string,
+    phone: (row.phone as string) || undefined,
+    organization: (row.organization as string) || undefined,
+    inquiryType: row.inquiry_type as InquiryType,
+    message: row.message as string,
+    isRead: !!(row.is_read as number),
+    isReplied: !!(row.is_replied as number),
+    adminNote: (row.admin_note as string) || undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+/** 問い合わせを作成 */
+export async function createInquiry(data: {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  inquiryType: InquiryType;
+  message: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO contact_inquiries (id, name, email, phone, organization, inquiry_type, message, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.id,
+      data.name,
+      data.email,
+      data.phone || null,
+      data.organization || null,
+      data.inquiryType,
+      data.message,
+      now,
+      now,
+    ]
+  );
+}
+
+/** 問い合わせ一覧を取得 */
+export async function getInquiries(options?: {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<ContactInquiry[]> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (options?.unreadOnly) {
+    conditions.push('is_read = 0');
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = options?.limit ? `LIMIT ${options.limit}` : '';
+  const offset = options?.offset ? `OFFSET ${options.offset}` : '';
+
+  const rows = await query(
+    `SELECT * FROM contact_inquiries ${where} ORDER BY created_at DESC ${limit} ${offset}`,
+    params
+  );
+  return rows.map(rowToInquiry);
+}
+
+/** 問い合わせをIDで取得 */
+export async function getInquiryById(id: string): Promise<ContactInquiry | null> {
+  const row = await queryOne('SELECT * FROM contact_inquiries WHERE id = ?', [id]);
+  return row ? rowToInquiry(row) : null;
+}
+
+/** 問い合わせを更新（既読/返信済み/管理者メモ） */
+export async function updateInquiry(
+  id: string,
+  update: { isRead?: boolean; isReplied?: boolean; adminNote?: string }
+): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.isRead !== undefined) {
+    fields.push('is_read = ?');
+    values.push(update.isRead ? 1 : 0);
+  }
+  if (update.isReplied !== undefined) {
+    fields.push('is_replied = ?');
+    values.push(update.isReplied ? 1 : 0);
+  }
+  if (update.adminNote !== undefined) {
+    fields.push('admin_note = ?');
+    values.push(update.adminNote);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(
+    `UPDATE contact_inquiries SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+/** 未読問い合わせ件数を取得 */
+export async function getUnreadInquiryCount(): Promise<number> {
+  const result = await queryOne<{ count: number }>(
+    'SELECT COUNT(*) as count FROM contact_inquiries WHERE is_read = 0'
+  );
+  return result?.count || 0;
 }
 
 /** カウントダウン設定を更新（開始日、初期総秒数、月額コスト、初期資金） */

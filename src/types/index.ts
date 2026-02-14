@@ -164,7 +164,7 @@ export interface SocialLink {
  * - milestone: マイルストーン通知（残り100日など）
  * - critical: 緊急通知（残り30日以下など）
  */
-export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical';
+export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical' | 'inquiry';
 
 /**
  * Discord Webhook ペイロード
@@ -179,6 +179,39 @@ export interface DiscordNotificationPayload {
     color?: number;
     timestamp?: string;
   };
+}
+
+// ============================================
+// 問い合わせ
+// ============================================
+
+/**
+ * 問い合わせ種別
+ * - general: 一般的な問い合わせ
+ * - collaboration: コラボレーション・協業
+ * - commission: 制作依頼
+ * - media: 取材・メディア関連
+ * - other: その他
+ */
+export type InquiryType = 'general' | 'collaboration' | 'commission' | 'media' | 'other';
+
+/**
+ * 問い合わせデータ
+ * フォームから送信された問い合わせを保持する
+ */
+export interface ContactInquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  inquiryType: InquiryType;
+  message: string;
+  isRead: boolean;
+  isReplied: boolean;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================

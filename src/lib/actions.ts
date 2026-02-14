@@ -8,10 +8,10 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser } from '@/types';
+import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType } from '@/types';
 import { SECONDS_PER_MONTH } from './constants';
 import * as db from './db';
-import { notifyLifespanExtension, notifyNewEvent } from './discord';
+import { notifyLifespanExtension, notifyNewEvent, notifyNewInquiry } from './discord';
 import { calculateRemainingSeconds } from './countdown';
 import { getSession } from './auth';
 
@@ -398,4 +398,78 @@ export async function updateCountdownSettingsAction(data: {
   revalidatePath('/');
 
   return db.getCountdown();
+}
+
+// ============================================
+// 問い合わせ Actions
+// ============================================
+
+/** 問い合わせを送信（公開フォーム用） */
+export async function submitContactInquiry(data: {
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  inquiryType: InquiryType;
+  message: string;
+}): Promise<ContactInquiry> {
+  const id = generateId();
+  await db.createInquiry({ id, ...data });
+
+  const inquiry = await db.getInquiryById(id);
+  if (!inquiry) throw new Error('Failed to create inquiry');
+
+  // メール送信（失敗しても問い合わせ自体は成功扱い）
+  const { sendAutoReply, sendAdminNotification } = await import('./email');
+  sendAutoReply(data.email, data.name, data.inquiryType, data.message).catch(
+    (err) => console.error('[Inquiry] Auto-reply failed:', err)
+  );
+  sendAdminNotification(inquiry).catch(
+    (err) => console.error('[Inquiry] Admin notification failed:', err)
+  );
+
+  // Discord通知
+  notifyNewInquiry(data.name, data.inquiryType).catch(
+    (err) => console.error('[Inquiry] Discord notification failed:', err)
+  );
+
+  return inquiry;
+}
+
+/** 問い合わせ一覧を取得（管理画面用） */
+export async function fetchInquiries(options?: {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<ContactInquiry[]> {
+  return db.getInquiries(options);
+}
+
+/** 問い合わせをIDで取得（管理画面用） */
+export async function fetchInquiryById(id: string): Promise<ContactInquiry | null> {
+  return db.getInquiryById(id);
+}
+
+/** 問い合わせを既読にする */
+export async function markInquiryAsRead(id: string): Promise<void> {
+  await db.updateInquiry(id, { isRead: true });
+  revalidatePath('/admin/inquiries');
+}
+
+/** 問い合わせを返信済みにする */
+export async function markInquiryAsReplied(id: string): Promise<void> {
+  await db.updateInquiry(id, { isReplied: true });
+  revalidatePath('/admin/inquiries');
+  revalidatePath(`/admin/inquiries/${id}`);
+}
+
+/** 管理者メモを更新 */
+export async function updateInquiryNote(id: string, note: string): Promise<void> {
+  await db.updateInquiry(id, { adminNote: note });
+  revalidatePath(`/admin/inquiries/${id}`);
+}
+
+/** 未読問い合わせ件数を取得 */
+export async function fetchUnreadInquiryCount(): Promise<number> {
+  return db.getUnreadInquiryCount();
 }

@@ -108,6 +108,14 @@ export default async function HomePage() {
               プロジェクト
             </a>
           </li>
+          <li>
+            <a
+              href="/contact"
+              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
+            >
+              問い合わせ
+            </a>
+          </li>
         </ul>
       </nav>
 

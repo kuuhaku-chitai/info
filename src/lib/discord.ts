@@ -172,3 +172,36 @@ export async function notifyCritical(remainingDays: number): Promise<boolean> {
     },
   });
 }
+
+/**
+ * 問い合わせ種別の日本語ラベル
+ */
+const INQUIRY_TYPE_LABELS: Record<string, string> = {
+  general: '一般',
+  collaboration: 'コラボ',
+  commission: '依頼',
+  media: '取材',
+  other: 'その他',
+};
+
+/**
+ * 新規問い合わせ通知を送信する
+ *
+ * @param name 問い合わせ者の名前
+ * @param inquiryType 問い合わせ種別
+ */
+export async function notifyNewInquiry(
+  name: string,
+  inquiryType: string
+): Promise<boolean> {
+  const typeLabel = INQUIRY_TYPE_LABELS[inquiryType] || inquiryType;
+  return sendDiscordNotification({
+    type: 'inquiry',
+    message: '⟡ 新規問い合わせ',
+    embed: {
+      title: `${name} - ${typeLabel}`,
+      description: '問い合わせが届いた。',
+      color: DISCORD_COLORS.inquiry,
+    },
+  });
+}
