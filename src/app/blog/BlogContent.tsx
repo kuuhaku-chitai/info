@@ -25,7 +25,9 @@ const Blog3DScene = dynamic(
     ssr: false,
     loading: () => (
       <div className="fixed inset-0 flex items-center justify-center bg-[var(--color-void)]">
-        <span className="text-ghost text-xs animate-pulse">空間を構築中...</span>
+        <span className="text-ghost text-[10px] tracking-[0.4em] font-light uppercase animate-pulse-whisper">
+          Initializing Space
+        </span>
       </div>
     ),
   }
