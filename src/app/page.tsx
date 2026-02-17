@@ -18,7 +18,7 @@ import { WeatherAtmosphereClient } from '@/components/weather';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { NewsSection } from '@/components/news';
 import { SocialLinks } from '@/components/social';
-import { fetchPostsByCategory, fetchAllSocialLinks } from '@/lib/actions';
+import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +31,9 @@ export default async function HomePage() {
 
   // ソーシャルリンクを取得
   const socialLinks = await fetchAllSocialLinks();
+
+  // 公開中の固定ページを取得（メニュー表示用）
+  const pages = await fetchPublishedPages();
 
   return (
     <div className="void-embrace relative">
@@ -116,11 +119,22 @@ export default async function HomePage() {
               問い合わせ
             </a>
           </li>
+          {/* 固定ページへのリンク（DBから動的に取得） */}
+          {pages.map((p) => (
+            <li key={p.id}>
+              <a
+                href={`/${p.path}`}
+                className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
+              >
+                {p.title}
+              </a>
+            </li>
+          ))}
         </ul>
       </nav>
 
       {/* モバイルメニュー（ソーシャルリンク付き） */}
-      <MobileMenu socialLinks={socialLinks} />
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }

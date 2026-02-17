@@ -13,6 +13,7 @@ import {
   fetchProjectById,
   fetchPostsByProjectId,
   fetchAllSocialLinks,
+  fetchPublishedPages,
 } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
@@ -40,10 +41,11 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ProjectPage({ params }: PageProps) {
   const { id } = await params;
-  const [project, relatedPosts, socialLinks] = await Promise.all([
+  const [project, relatedPosts, socialLinks, pages] = await Promise.all([
     fetchProjectById(id),
     fetchPostsByProjectId(id),
     fetchAllSocialLinks(),
+    fetchPublishedPages(),
   ]);
 
   if (!project || !project.isPublished) {
@@ -175,7 +177,7 @@ export default async function ProjectPage({ params }: PageProps) {
         </Link>
       </nav>
 
-      <MobileMenu socialLinks={socialLinks} />
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }

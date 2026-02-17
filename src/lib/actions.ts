@@ -8,7 +8,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType } from '@/types';
+import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page } from '@/types';
 import { SECONDS_PER_MONTH } from './constants';
 import * as db from './db';
 import { notifyLifespanExtension, notifyNewEvent, notifyNewInquiry } from './discord';
@@ -475,4 +475,85 @@ export async function updateInquiryNote(id: string, note: string): Promise<void>
 /** 未読問い合わせ件数を取得 */
 export async function fetchUnreadInquiryCount(): Promise<number> {
   return db.getUnreadInquiryCount();
+}
+
+// ============================================
+// 固定ページ Actions
+// ============================================
+
+export async function fetchAllPages(): Promise<Page[]> {
+  return db.getAllPages();
+}
+
+export async function fetchPublishedPages(): Promise<Page[]> {
+  return db.getPublishedPages();
+}
+
+export async function fetchPageById(id: string): Promise<Page | null> {
+  return db.getPageById(id);
+}
+
+export async function fetchPageByPath(path: string): Promise<Page | null> {
+  return db.getPageByPath(path);
+}
+
+export async function createNewPage(
+  data: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'authorId'>
+): Promise<Page> {
+  const user = await getSession();
+  const now = new Date().toISOString();
+  const page = {
+    ...data,
+    id: generateId(),
+    authorId: user?.id,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.createPage(page);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/pages');
+  revalidatePath('/');
+  revalidatePath(`/${data.path}`);
+
+  return page;
+}
+
+export async function updateExistingPage(
+  id: string,
+  data: Partial<Page>
+): Promise<Page | null> {
+  const existing = await db.getPageById(id);
+  if (!existing) return null;
+
+  await db.updatePage(id, data);
+
+  const updated = await db.getPageById(id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/pages');
+  revalidatePath(`/admin/pages/${id}`);
+  revalidatePath('/');
+  // 旧パスと新パスの両方をrevalidate
+  revalidatePath(`/${existing.path}`);
+  if (data.path && data.path !== existing.path) {
+    revalidatePath(`/${data.path}`);
+  }
+
+  return updated;
+}
+
+export async function deleteExistingPage(id: string): Promise<boolean> {
+  const existing = await db.getPageById(id);
+  await db.deletePage(id);
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/pages');
+  revalidatePath('/');
+  if (existing) {
+    revalidatePath(`/${existing.path}`);
+  }
+
+  return true;
 }

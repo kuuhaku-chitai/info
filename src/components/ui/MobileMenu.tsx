@@ -12,14 +12,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { type SocialLink } from '@/types';
+import { type SocialLink, type Page } from '@/types';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface MobileMenuProps {
     socialLinks?: SocialLink[];
+    pages?: Page[];
 }
 
-export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
+export function MobileMenu({ socialLinks = [], pages = [] }: MobileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
 
@@ -42,13 +43,14 @@ export function MobileMenu({ socialLinks = [] }: MobileMenuProps) {
 
     const toggleMenu = () => setIsOpen(!isOpen);
 
-    // メニュー項目
+    // メニュー項目（固定ページはDBから動的に追加）
     const links = [
         { href: '/', label: 'ホーム' },
         { href: '/blog', label: '記録' },
         { href: '/schedule', label: '予定' },
         { href: '/projects', label: 'プロジェクト' },
         { href: '/contact', label: '問い合わせ' },
+        ...pages.map((p) => ({ href: `/${p.path}`, label: p.title })),
     ];
 
     return (

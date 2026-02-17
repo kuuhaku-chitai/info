@@ -215,6 +215,38 @@ export interface ContactInquiry {
 }
 
 // ============================================
+// 固定ページ
+// ============================================
+
+/**
+ * 固定ページデータ
+ * 投稿やプロジェクトとは異なり、カテゴリやタグを持たない。
+ * URLパス（concept, aboutなど）で公開される。
+ */
+export interface Page {
+  /** 一意識別子 */
+  id: string;
+  /** ページタイトル */
+  title: string;
+  /** URLパス（例: concept, about） */
+  path: string;
+  /** Markdownコンテンツ */
+  markdown: string;
+  /** 公開状態 */
+  isPublished: boolean;
+  /** アイキャッチ画像URL */
+  thumbnailUrl?: string;
+  /** メニューでの表示順序（小さいほど先に表示） */
+  sortOrder: number;
+  /** 著者ID */
+  authorId?: string;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
+}
+
+// ============================================
 // UI Component Types
 // ============================================
 

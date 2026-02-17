@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType } from '@/types';
+import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page } from '@/types';
 
 // ============================================
 // 型定義
@@ -925,4 +925,115 @@ export async function updateCountdownSettings(data: {
     `UPDATE countdown SET ${fields.join(', ')} WHERE id = 1`,
     values
   );
+}
+
+// ============================================
+// 固定ページ操作
+// ============================================
+
+function rowToPage(row: DbRow): Page {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    path: row.path as string,
+    markdown: row.markdown as string,
+    isPublished: !!(row.is_published as number),
+    thumbnailUrl: (row.thumbnail_url as string) || undefined,
+    sortOrder: row.sort_order as number,
+    authorId: (row.author_id as string) || undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getAllPages(): Promise<Page[]> {
+  const rows = await query('SELECT * FROM pages ORDER BY sort_order ASC, created_at DESC');
+  return rows.map(rowToPage);
+}
+
+export async function getPublishedPages(): Promise<Page[]> {
+  const rows = await query(
+    'SELECT * FROM pages WHERE is_published = 1 ORDER BY sort_order ASC'
+  );
+  return rows.map(rowToPage);
+}
+
+export async function getPageById(id: string): Promise<Page | null> {
+  const row = await queryOne('SELECT * FROM pages WHERE id = ?', [id]);
+  return row ? rowToPage(row) : null;
+}
+
+export async function getPageByPath(path: string): Promise<Page | null> {
+  const row = await queryOne('SELECT * FROM pages WHERE path = ? AND is_published = 1', [path]);
+  return row ? rowToPage(row) : null;
+}
+
+export async function createPage(page: Omit<Page, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string }): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO pages (id, title, path, markdown, is_published, thumbnail_url, sort_order, author_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      page.id,
+      page.title,
+      page.path,
+      page.markdown,
+      page.isPublished ? 1 : 0,
+      page.thumbnailUrl || null,
+      page.sortOrder,
+      page.authorId || null,
+      page.createdAt || now,
+      page.updatedAt || now,
+    ]
+  );
+}
+
+export async function updatePage(
+  id: string,
+  update: Partial<Page>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.title !== undefined) {
+    fields.push('title = ?');
+    values.push(update.title);
+  }
+  if (update.path !== undefined) {
+    fields.push('path = ?');
+    values.push(update.path);
+  }
+  if (update.markdown !== undefined) {
+    fields.push('markdown = ?');
+    values.push(update.markdown);
+  }
+  if (update.isPublished !== undefined) {
+    fields.push('is_published = ?');
+    values.push(update.isPublished ? 1 : 0);
+  }
+  if (update.thumbnailUrl !== undefined) {
+    fields.push('thumbnail_url = ?');
+    values.push(update.thumbnailUrl || null);
+  }
+  if (update.sortOrder !== undefined) {
+    fields.push('sort_order = ?');
+    values.push(update.sortOrder);
+  }
+  if (update.authorId !== undefined) {
+    fields.push('author_id = ?');
+    values.push(update.authorId || null);
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(
+    `UPDATE pages SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+export async function deletePage(id: string): Promise<void> {
+  await execute('DELETE FROM pages WHERE id = ?', [id]);
 }

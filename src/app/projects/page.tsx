@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { fetchPublishedProjects, fetchAllSocialLinks } from '@/lib/actions';
+import { fetchPublishedProjects, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
@@ -19,9 +19,10 @@ export const metadata = {
 };
 
 export default async function ProjectsPage() {
-  const [projects, socialLinks] = await Promise.all([
+  const [projects, socialLinks, pages] = await Promise.all([
     fetchPublishedProjects(),
     fetchAllSocialLinks(),
+    fetchPublishedPages(),
   ]);
 
   return (
@@ -121,7 +122,7 @@ export default async function ProjectsPage() {
         </Link>
       </nav>
 
-      <MobileMenu socialLinks={socialLinks} />
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }
