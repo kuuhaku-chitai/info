@@ -12,10 +12,32 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import Image from 'next/image';
 import type { Components } from 'react-markdown';
 import { getOptimizedImageUrl } from '@/lib/utils';
+
+// iframe埋め込みを許可する信頼ドメイン
+const TRUSTED_IFRAME_DOMAINS = [
+    'www.youtube.com',
+    'youtube.com',
+    'www.youtube-nocookie.com',
+    'www.google.com',
+    'maps.google.com',
+    'maps.google.co.jp',
+    'player.vimeo.com',
+    'open.spotify.com',
+];
+
+function isTrustedIframeSrc(src: string): boolean {
+    try {
+        const url = new URL(src);
+        return TRUSTED_IFRAME_DOMAINS.some(domain => url.hostname === domain);
+    } catch {
+        return false;
+    }
+}
 
 interface MarkdownRendererProps {
     content: string;
@@ -147,6 +169,33 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             <hr className="border-t border-edge my-8" />
         ),
 
+        // iframe埋め込み（YouTube, Google Maps等）
+        // 信頼ドメインのみ許可し、それ以外は表示しない
+        iframe: ({ src, title, width, height }) => {
+            if (!src || typeof src !== 'string' || !isTrustedIframeSrc(src)) {
+                return null;
+            }
+            return (
+                <span className="block my-8">
+                    <iframe
+                        src={src}
+                        title={title || '埋め込みコンテンツ'}
+                        width={width || '100%'}
+                        height={height || '450'}
+                        className="w-full rounded border-0"
+                        style={{ aspectRatio: '16 / 9' }}
+                        sandbox="allow-scripts allow-same-origin allow-popups"
+                        loading="lazy"
+                        allowFullScreen
+                    />
+                </span>
+            );
+        },
+
+        // セキュリティ: script/styleタグを無効化
+        script: () => null,
+        style: () => null,
+
         // テーブル（GFM）
         table: ({ children }) => (
             <div className="overflow-x-auto my-6">
@@ -176,7 +225,7 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         <div className={`prose-void ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
                 components={components}
             >
                 {content}
