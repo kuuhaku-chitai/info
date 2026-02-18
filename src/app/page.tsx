@@ -16,6 +16,7 @@ import { Suspense } from 'react';
 import { CountdownServer } from '@/components/countdown';
 import { WeatherAtmosphereClient } from '@/components/weather';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 import { NewsSection } from '@/components/news';
 import { SocialLinks } from '@/components/social';
 import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
@@ -85,53 +86,7 @@ export default async function HomePage() {
         最小限のリンクのみ。押し付けがましくない。
         モバイルではメニュー内に移動するため非表示。
       */}
-      <nav className="hug-corner-bl z-10 hidden md:block">
-        <ul className="flex gap-4 text-xs text-ghost">
-          <li>
-            <a
-              href="/blog"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              記録
-            </a>
-          </li>
-          <li>
-            <a
-              href="/schedule"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              予定
-            </a>
-          </li>
-          <li>
-            <a
-              href="/projects"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              プロジェクト
-            </a>
-          </li>
-          <li>
-            <a
-              href="/contact"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              問い合わせ
-            </a>
-          </li>
-          {/* 固定ページへのリンク（DBから動的に取得） */}
-          {pages.map((p) => (
-            <li key={p.id}>
-              <a
-                href={`/${p.path}`}
-                className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-              >
-                {p.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <DesktopNav variant="corner" pages={pages} />
 
       {/* モバイルメニュー（ソーシャルリンク付き） */}
       <MobileMenu socialLinks={socialLinks} pages={pages} />

@@ -16,6 +16,7 @@ import {
   fetchPublishedPages,
 } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
@@ -167,7 +168,7 @@ export default async function ProjectPage({ params }: PageProps) {
         </section>
       )}
 
-      {/* フッターナビ */}
+      {/* 戻るリンク */}
       <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
         <Link
           href="/projects"
@@ -176,6 +177,9 @@ export default async function ProjectPage({ params }: PageProps) {
           ← プロジェクトに戻る
         </Link>
       </nav>
+
+      {/* デスクトップナビゲーション */}
+      <DesktopNav variant="footer" pages={pages} />
 
       <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>

@@ -8,7 +8,7 @@
  * イベント情報を控えめに提示する。
  */
 
-import { fetchPostsByCategory, fetchAllSocialLinks } from '@/lib/actions';
+import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { ScheduleContent } from './ScheduleContent';
 
 export const dynamic = 'force-dynamic';
@@ -19,10 +19,11 @@ export const metadata = {
 };
 
 export default async function SchedulePage() {
-  const [events, socialLinks] = await Promise.all([
+  const [events, socialLinks, pages] = await Promise.all([
     fetchPostsByCategory('event'),
     fetchAllSocialLinks(),
+    fetchPublishedPages(),
   ]);
 
-  return <ScheduleContent events={events} socialLinks={socialLinks} />;
+  return <ScheduleContent events={events} socialLinks={socialLinks} pages={pages} />;
 }
