@@ -33,8 +33,8 @@ export function DesktopNav({ pages = [], variant }: DesktopNavProps) {
 
     // 固定リンク + 動的ページリンク
     const allLinks = [
-        ...STATIC_LINKS,
         ...pages.map((p) => ({ href: `/${p.path}`, label: p.title })),
+        ...STATIC_LINKS,
     ];
 
     // variant別のラッパースタイル
