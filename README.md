@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 空白地帯 - Kuuhaku Chitai
 
-## Getting Started
+Next.js 16 + Cloudflare Workers で構築された、時間の消滅を可視化するウェブアプリケーション。
 
-First, run the development server:
+## 必要要件
+
+- **Node.js** 20.x以上
+- **pnpm** 9.0.0以上（npm/yarnは非推奨）
+- **Docker & Docker Compose**（ローカル開発用）
+
+## セットアップ
+
+### 1. pnpmのインストール
+
+pnpmがインストールされていない場合：
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install -g pnpm
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 依存関係インストール
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. 環境変数設定
 
-## Learn More
+`.env.local` ファイルを作成：
 
-To learn more about Next.js, take a look at the following resources:
+```env
+# ローカル開発用
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+RESEND_API_KEY=your_resend_api_key
+TURNSTILE_SECRET_KEY=your_turnstile_secret
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Docker起動 + DB初期化
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm run setup
+```
 
-## Deploy on Vercel
+これにより以下が実行されます：
+- MinIO（R2互換ストレージ）の起動
+- SQLiteデータベースの初期化
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 5. 開発サーバー起動
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm run dev
+```
+
+[http://localhost:3000](http://localhost:3000) にアクセス
+
+## 主要コマンド
+
+| コマンド | 説明 |
+|---------|------|
+| `pnpm run dev` | 開発サーバー起動 |
+| `pnpm run build` | Next.jsビルド |
+| `pnpm run build:worker` | Cloudflare Workersビルド |
+| `pnpm run deploy` | 本番デプロイ |
+| `pnpm run deploy:preview` | プレビュー環境デプロイ |
+| `pnpm run db:migrate` | データベースマイグレーション |
+| `pnpm run docker:up` | Docker起動 |
+| `pnpm run docker:down` | Docker停止 |
+| `pnpm run lint` | ESLint実行 |
+
+## デプロイ
+
+Cloudflare Workersへのデプロイ：
+
+```bash
+pnpm run deploy
+```
+
+## コンセプト
+
+「空白地帯」は時間の消滅を可視化するプロジェクトです。詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
+
+## 技術スタック
+
+- **フレームワーク**: Next.js 16 (App Router)
+- **デプロイ**: Cloudflare Workers
+- **データベース**:
+  - 開発: SQLite (better-sqlite3)
+  - 本番: Cloudflare D1
+- **ストレージ**:
+  - 開発: MinIO
+  - 本番: Cloudflare R2
+- **パッケージマネージャー**: pnpm
+- **3Dレンダリング**: Three.js + React Three Fiber
+- **アニメーション**: Framer Motion
+- **Markdown**: react-markdown + KaTeX
+
+## ライセンス
+
+このプロジェクトは個人プロジェクトです。
