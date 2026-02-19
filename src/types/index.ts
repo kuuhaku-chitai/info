@@ -6,6 +6,23 @@
  */
 
 // ============================================
+// 認証
+// ============================================
+
+/**
+ * 管理者ユーザー
+ * パスワードハッシュは含まない（クライアントに渡さないため）
+ */
+export interface AdminUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // KV Data Schema
 // ============================================
 
@@ -14,8 +31,9 @@
  * - event: カレンダーに表示されるイベント（展示、パフォーマンス等）
  * - article: 長文の記事（エッセイ、批評等）
  * - note: 短いメモ、断片的な思考
+ * - news: お知らせ（トップページに表示される重要な告知）
  */
-export type PostCategory = 'event' | 'article' | 'note';
+export type PostCategory = 'event' | 'article' | 'note' | 'news';
 
 /**
  * 投稿データ
@@ -45,6 +63,34 @@ export interface Post {
   eventEndDate?: string;
   /** 最終更新日時 (ISO 8601) */
   updatedAt: string;
+  /** 紐づくプロジェクトID（紐づいた投稿は /blog に表示されない） */
+  projectId?: string;
+  /** 著者ID（管理者ユーザーへの参照） */
+  authorId?: string;
+}
+
+// ============================================
+// プロジェクト
+// ============================================
+
+/**
+ * プロジェクトデータ
+ * 投稿と同じ構造を持ち、関連記事を束ねる単位として機能する。
+ */
+export interface Project {
+  id: string;
+  title: string;
+  date: string;
+  markdown: string;
+  category: PostCategory;
+  tags: string[];
+  isPublished: boolean;
+  thumbnailUrl?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  updatedAt: string;
+  /** 著者ID（管理者ユーザーへの参照） */
+  authorId?: string;
 }
 
 /**
@@ -58,6 +104,10 @@ export interface CountdownState {
   initialTotalSeconds: number;
   /** 延命により追加された秒数の累計 */
   addedSeconds: number;
+  /** 月額コスト（円） */
+  monthlyCost: number;
+  /** 初期資金（円） */
+  initialFund: number;
   /** 最終更新日時 */
   updatedAt: string;
 }
@@ -79,6 +129,31 @@ export interface Donation {
 }
 
 // ============================================
+// ソーシャルリンク
+// ============================================
+
+/**
+ * ソーシャルリンクデータ
+ * 外部SNS等へのリンクを管理
+ */
+export interface SocialLink {
+  /** 一意識別子 */
+  id: string;
+  /** リンクタイトル（例: Twitter, Instagram） */
+  title: string;
+  /** リンクURL */
+  url: string;
+  /** アイコン画像URL */
+  iconUrl: string;
+  /** 表示順序（小さいほど先に表示） */
+  sortOrder: number;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
+}
+
+// ============================================
 // Discord Notification Types
 // ============================================
 
@@ -89,7 +164,7 @@ export interface Donation {
  * - milestone: マイルストーン通知（残り100日など）
  * - critical: 緊急通知（残り30日以下など）
  */
-export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical';
+export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical' | 'inquiry';
 
 /**
  * Discord Webhook ペイロード
@@ -104,6 +179,71 @@ export interface DiscordNotificationPayload {
     color?: number;
     timestamp?: string;
   };
+}
+
+// ============================================
+// 問い合わせ
+// ============================================
+
+/**
+ * 問い合わせ種別
+ * - general: 一般的な問い合わせ
+ * - collaboration: コラボレーション・協業
+ * - commission: 制作依頼
+ * - media: 取材・メディア関連
+ * - other: その他
+ */
+export type InquiryType = 'general' | 'collaboration' | 'commission' | 'media' | 'other';
+
+/**
+ * 問い合わせデータ
+ * フォームから送信された問い合わせを保持する
+ */
+export interface ContactInquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  inquiryType: InquiryType;
+  message: string;
+  isRead: boolean;
+  isReplied: boolean;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// 固定ページ
+// ============================================
+
+/**
+ * 固定ページデータ
+ * 投稿やプロジェクトとは異なり、カテゴリやタグを持たない。
+ * URLパス（concept, aboutなど）で公開される。
+ */
+export interface Page {
+  /** 一意識別子 */
+  id: string;
+  /** ページタイトル */
+  title: string;
+  /** URLパス（例: concept, about） */
+  path: string;
+  /** Markdownコンテンツ */
+  markdown: string;
+  /** 公開状態 */
+  isPublished: boolean;
+  /** アイキャッチ画像URL */
+  thumbnailUrl?: string;
+  /** メニューでの表示順序（小さいほど先に表示） */
+  sortOrder: number;
+  /** 著者ID */
+  authorId?: string;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
 }
 
 // ============================================

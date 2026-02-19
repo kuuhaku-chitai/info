@@ -131,12 +131,12 @@ function SecondsCounter({
             exit={{ opacity: 0, y: 8 }}
             transition={{
               opacity: {
-                duration: 4,
+                duration: 0,
                 repeat: Infinity,
-                ease: 'easeInOut',
+                ease: ANIMATION_EASING.dew,
               },
               y: {
-                duration: 0.3,
+                duration: 0,
                 ease: ANIMATION_EASING.dew,
               },
             }}

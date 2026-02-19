@@ -9,7 +9,7 @@
  */
 
 import { type Post, type CountdownState, type Donation } from '@/types';
-import { INITIAL_TOTAL_SECONDS } from './constants';
+import { INITIAL_TOTAL_SECONDS, MONTHLY_COST, INITIAL_FUND } from './constants';
 
 // ============================================
 // データ構造
@@ -36,6 +36,8 @@ export const initialStoreData: StoreData = {
     startDate: PROJECT_START_DATE,
     initialTotalSeconds: INITIAL_TOTAL_SECONDS,
     addedSeconds: 0,
+    monthlyCost: MONTHLY_COST,
+    initialFund: INITIAL_FUND,
     updatedAt: PROJECT_START_DATE,
   },
   posts: [],

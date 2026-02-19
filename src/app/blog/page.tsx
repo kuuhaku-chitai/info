@@ -11,7 +11,7 @@
  * 記事に「ぶつかる」ことで、大きな揺れを生み出す。
  */
 
-import { fetchPublishedPosts } from '@/lib/actions';
+import { fetchPublishedPosts, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { BlogContent } from './BlogContent';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +23,15 @@ export const metadata = {
 
 export default async function BlogPage() {
   // サーバーサイドでデータを取得
-  const allPosts = await fetchPublishedPosts();
+  const [allPosts, socialLinks, pages] = await Promise.all([
+    fetchPublishedPosts(),
+    fetchAllSocialLinks(),
+    fetchPublishedPages(),
+  ]);
 
-  // イベント以外の投稿（記事とメモ）を表示
-  const posts = allPosts.filter((post) => post.category !== 'event');
+  // イベントとお知らせ以外の投稿（記事とメモ）を表示
+  const posts = allPosts.filter((post) => post.category !== 'event' && post.category !== 'news');
 
   // クライアントコンポーネントにデータを渡す
-  return <BlogContent posts={posts} />;
+  return <BlogContent posts={posts} socialLinks={socialLinks} pages={pages} />;
 }

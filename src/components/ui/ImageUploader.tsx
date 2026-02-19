@@ -14,6 +14,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface ImageUploaderProps {
   /**
@@ -243,7 +244,7 @@ export function ImageUploader({
           // 画像がある場合
           <div className="relative w-full h-full group">
             <Image
-              src={value}
+              src={getOptimizedImageUrl(value)}
               alt="アップロードされた画像"
               fill
               className="object-cover"

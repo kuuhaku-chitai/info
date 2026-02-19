@@ -80,6 +80,7 @@ export const ANIMATION_EASING = {
   dew: [0.16, 1, 0.3, 1],
   /** 風に揺れる葉のような動き */
   leaf: [0.34, 1.56, 0.64, 1],
+  none: [0, 0, 0, 0]
 } as const;
 
 // ============================================
@@ -131,4 +132,6 @@ export const DISCORD_COLORS = {
   milestone: 0x7C3AED,
   /** 危機 - 時間の枯渇（深い赤） */
   critical: 0x8B0000,
+  /** 問い合わせ - 外部からの接触（灰青色） */
+  inquiry: 0x6B8E9B,
 } as const;

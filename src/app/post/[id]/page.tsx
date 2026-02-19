@@ -8,7 +8,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { fetchPostById } from '@/lib/actions';
+import { fetchPostById, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
+import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +36,11 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PostPage({ params }: PageProps) {
   const { id } = await params;
-  const post = await fetchPostById(id);
+  const [post, socialLinks, pages] = await Promise.all([
+    fetchPostById(id),
+    fetchAllSocialLinks(),
+    fetchPublishedPages(),
+  ]);
 
   if (!post || !post.isPublished) {
     notFound();
@@ -43,14 +51,20 @@ export default async function PostPage({ params }: PageProps) {
     article: '記事',
     note: 'メモ',
     event: 'イベント',
+    news: 'お知らせ',
   };
 
-  // 戻り先を決定
-  const backLink = post.category === 'event' ? '/schedule' : '/blog';
-  const backLabel = post.category === 'event' ? '予定' : '記録';
+  // 戻り先を決定（プロジェクト紐づきの場合はプロジェクト詳細へ）
+  const getBackLink = () => {
+    if (post.projectId) return { link: `/project/${post.projectId}`, label: 'プロジェクト' };
+    if (post.category === 'event') return { link: '/schedule', label: '予定' };
+    if (post.category === 'news') return { link: '/', label: 'トップ' };
+    return { link: '/blog', label: '記録' };
+  };
+  const { link: backLink, label: backLabel } = getBackLink();
 
   return (
-    <div className="min-h-screen bg-[var(--color-void)] py-16 px-8">
+    <div className="min-h-screen bg-[var(--color-void)] pt-16 pb-32 px-8">
       {/* ヘッダー */}
       <header className="max-w-2xl mx-auto mb-16">
         <Link
@@ -67,7 +81,7 @@ export default async function PostPage({ params }: PageProps) {
         {post.thumbnailUrl && (
           <div className="relative aspect-video mb-12 content-frame overflow-hidden">
             <Image
-              src={post.thumbnailUrl}
+              src={getOptimizedImageUrl(post.thumbnailUrl)}
               alt={post.title}
               fill
               className="object-cover"
@@ -105,71 +119,7 @@ export default async function PostPage({ params }: PageProps) {
         </h1>
 
         {/* 本文 */}
-        <div className="prose-void">
-          {post.markdown.split('\n').map((line, index) => {
-            // 空行
-            if (!line.trim()) {
-              return <br key={index} />;
-            }
-            // 見出し
-            if (line.startsWith('# ')) {
-              return (
-                <h2
-                  key={index}
-                  className="text-base font-light text-ink mt-12 mb-4 tracking-wide"
-                >
-                  {line.slice(2)}
-                </h2>
-              );
-            }
-            if (line.startsWith('## ')) {
-              return (
-                <h3
-                  key={index}
-                  className="text-sm font-medium text-ink mt-8 mb-3 tracking-wide"
-                >
-                  {line.slice(3)}
-                </h3>
-              );
-            }
-            // 画像
-            const imageMatch = line.match(/!\[.*?\]\((.*?)\)/);
-            if (imageMatch) {
-              return (
-                <div key={index} className="my-8">
-                  <Image
-                    src={imageMatch[1]}
-                    alt=""
-                    width={800}
-                    height={600}
-                    className="w-full h-auto"
-                    unoptimized
-                  />
-                </div>
-              );
-            }
-            // 引用
-            if (line.startsWith('> ')) {
-              return (
-                <blockquote
-                  key={index}
-                  className="border-l-2 border-ghost pl-4 my-4 text-ghost italic"
-                >
-                  {line.slice(2)}
-                </blockquote>
-              );
-            }
-            // 通常のパラグラフ
-            return (
-              <p
-                key={index}
-                className="text-sm text-ink leading-[2] mb-4 font-light"
-              >
-                {line}
-              </p>
-            );
-          })}
-        </div>
+        <MarkdownRenderer content={post.markdown} />
 
         {/* タグ */}
         {post.tags.length > 0 && (
@@ -182,9 +132,9 @@ export default async function PostPage({ params }: PageProps) {
           </div>
         )}
       </article>
-
-      {/* フッターナビ */}
-      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge">
+      {/* 戻るリンク */}
+      {backLink}
+      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
         <Link
           href={backLink}
           className="text-xs text-ghost hover:text-ink transition-colors"
@@ -192,6 +142,10 @@ export default async function PostPage({ params }: PageProps) {
           ← {backLabel}に戻る
         </Link>
       </nav>
+      {/* デスクトップナビゲーション */}
+      <DesktopNav variant="footer" pages={pages} />
+
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }

@@ -54,6 +54,89 @@ export function MarkdownEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   /**
+   * テキストエリアのカーソル位置にテキストを挿入
+   */
+  function insertAtCursor(text: string) {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue =
+        value.substring(0, start) + text + '\n' + value.substring(end);
+      onChange(newValue);
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd =
+          start + text.length + 1;
+        textarea.focus();
+      }, 0);
+    } else {
+      onChange(value + '\n' + text + '\n');
+    }
+  }
+
+  /**
+   * YouTube URLからembed iframeを生成して挿入
+   */
+  function handleInsertYouTube() {
+    const url = prompt('YouTube URLを入力してください:');
+    if (!url) return;
+
+    // youtube.com/watch?v=ID or youtu.be/ID からIDを抽出
+    let videoId: string | null = null;
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname.includes('youtube.com')) {
+        videoId = parsed.searchParams.get('v');
+      } else if (parsed.hostname === 'youtu.be') {
+        videoId = parsed.pathname.slice(1);
+      }
+    } catch {
+      // URL解析失敗
+    }
+
+    if (!videoId) {
+      alert('YouTubeのURLを正しく入力してください。\n例: https://www.youtube.com/watch?v=...');
+      return;
+    }
+
+    const iframe = `<iframe src="https://www.youtube.com/embed/${videoId}" title="YouTube" width="100%" height="450" frameborder="0" allowfullscreen></iframe>`;
+    insertAtCursor(iframe);
+  }
+
+  /**
+   * Google Maps埋め込みHTMLをそのまま挿入
+   */
+  function handleInsertGoogleMaps() {
+    const html = prompt('Google Mapsの埋め込みHTML（iframeタグ）を貼り付けてください:');
+    if (!html) return;
+
+    // iframeタグを抽出
+    const match = html.match(/<iframe[^>]*src="[^"]*google\.com\/maps[^"]*"[^>]*><\/iframe>/i);
+    if (match) {
+      insertAtCursor(match[0]);
+    } else if (html.includes('<iframe') && html.includes('google.com/maps')) {
+      insertAtCursor(html.trim());
+    } else {
+      alert('Google Mapsの埋め込みHTMLを正しく貼り付けてください。\nGoogle Mapsで「共有」→「地図を埋め込む」からHTMLをコピーしてください。');
+    }
+  }
+
+  /**
+   * 汎用embed: 任意のiframe HTMLを挿入
+   */
+  function handleInsertEmbed() {
+    const html = prompt('埋め込みHTML（iframeタグ）を貼り付けてください:');
+    if (!html) return;
+
+    const match = html.match(/<iframe[^>]*>[\s\S]*?<\/iframe>/i);
+    if (match) {
+      insertAtCursor(match[0]);
+    } else {
+      alert('iframeタグを含むHTMLを貼り付けてください。');
+    }
+  }
+
+  /**
    * 画像を圧縮する
    */
   const compressImage = useCallback(
@@ -224,6 +307,31 @@ export function MarkdownEditor({
 
   return (
     <div className="relative">
+      {/* 埋め込みツールバー */}
+      <div className="flex gap-2 mb-1">
+        <button
+          type="button"
+          onClick={handleInsertYouTube}
+          className="px-2 py-0.5 text-[10px] text-ghost border border-edge rounded hover:text-ink hover:border-ghost transition-colors"
+        >
+          YouTube
+        </button>
+        <button
+          type="button"
+          onClick={handleInsertGoogleMaps}
+          className="px-2 py-0.5 text-[10px] text-ghost border border-edge rounded hover:text-ink hover:border-ghost transition-colors"
+        >
+          Google Maps
+        </button>
+        <button
+          type="button"
+          onClick={handleInsertEmbed}
+          className="px-2 py-0.5 text-[10px] text-ghost border border-edge rounded hover:text-ink hover:border-ghost transition-colors"
+        >
+          埋め込み
+        </button>
+      </div>
+
       <textarea
         ref={textareaRef}
         value={value}
@@ -259,7 +367,7 @@ export function MarkdownEditor({
 
       {/* ヘルプテキスト */}
       <p className="text-[10px] text-ghost mt-1 opacity-60">
-        画像はドラッグ&ドロップ、またはCtrl+Vで貼り付けできます
+        画像はドラッグ&ドロップ、またはCtrl+Vで貼り付け。YouTube・Google Maps等はツールバーから挿入できます
       </p>
     </div>
   );

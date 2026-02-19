@@ -26,6 +26,7 @@ import { WindSystem } from './WindSystem';
 import { WanderingCharacter } from './WanderingCharacter';
 import { PaginationDoor } from './PaginationDoor';
 import { ZoomController } from './ZoomController';
+import { Blog3DLoader } from './Blog3DLoader';
 import { FLOOR_SIZE, FLOOR_Y, CEILING_Y } from './floorConfig';
 
 // ズーム設定
@@ -245,6 +246,7 @@ export function Blog3DScene({ posts }: Blog3DSceneProps) {
         }}
         style={{ background: '#FAFAFA' }}
       >
+        <Blog3DLoader />
         <Suspense fallback={null}>
           {/* ズームレベルに応じてカメラ位置を更新 */}
           <CameraController zoom={zoom} />

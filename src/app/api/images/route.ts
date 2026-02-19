@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイルをBufferに変換
+    // ファイルをUint8Arrayに変換（R2バインディング + S3 SDK 両対応）
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const body = new Uint8Array(arrayBuffer);
 
     // R2/MinIOに画像を保存
-    const result = await uploadImage(postId, buffer, file.type);
+    const result = await uploadImage(postId, body, file.type);
 
     return NextResponse.json({
       success: true,

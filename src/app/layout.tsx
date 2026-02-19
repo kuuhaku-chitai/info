@@ -84,7 +84,7 @@ export default function RootLayout({
         body要素には最小限のスタイルのみ適用。
         「空白」を主役にするため、装飾は行わない。
       */}
-      <body className="bg-[var(--color-void)] text-[var(--color-ink)] antialiased">
+      <body className="bg-[var(--color-void)] text-[var(--color-ink)] antialiased" suppressHydrationWarning={true}>
         {/*
           メインコンテンツ領域
           min-h-screenで画面全体を使用し、flexで中央配置可能に。

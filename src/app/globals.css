@@ -7,6 +7,7 @@
  */
 
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* ============================================
    CSS Custom Properties (カスタムプロパティ)
@@ -18,7 +19,7 @@
   /* 背景の白（純白ではなく、わずかに温かみのある白） */
   --color-ink: #1A1A1A;
   /* テキストの黒（完全な黒ではなく、墨のような深い灰） */
-  --color-ghost: #BFBFBF;
+  --color-ghost: #a5a2a2;
   /* 消えかけた文字のような淡い灰 */
   --color-edge: #E8E8E8;
   /* マスク境界線の色（ほぼ見えない） */
@@ -87,6 +88,11 @@ body {
 
   /* オーバーフロー制御 */
   overflow-x: hidden;
+}
+
+b,
+strong {
+  font-weight: bold !important;
 }
 
 /* ============================================
@@ -751,4 +757,436 @@ body {
 .weather-container {
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* ============================================
+   Calendar System (カレンダーシステム)
+
+   Googleカレンダー風のシンプルなイベント表示。
+   「空白地帯」のコンセプトに沿った控えめなデザイン。
+   ============================================ */
+
+/* カレンダーコンテナ */
+.calendar-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* カレンダーヘッダー */
+.calendar-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-edge);
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.calendar-nav-btn,
+.calendar-today-btn {
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--color-edge);
+  color: var(--color-ghost);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--duration-whisper) var(--easing-organic);
+}
+
+.calendar-nav-btn:hover,
+.calendar-today-btn:hover {
+  border-color: var(--color-ghost);
+  color: var(--color-ink);
+}
+
+.calendar-title {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--color-ink);
+  letter-spacing: 0.1em;
+}
+
+.calendar-mode-switch {
+  display: flex;
+  gap: 2px;
+}
+
+.calendar-mode-btn {
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--color-edge);
+  color: var(--color-ghost);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--duration-whisper) var(--easing-organic);
+}
+
+.calendar-mode-btn:first-child {
+  border-radius: 2px 0 0 2px;
+}
+
+.calendar-mode-btn:last-child {
+  border-radius: 0 2px 2px 0;
+}
+
+.calendar-mode-btn.active {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-void);
+}
+
+.calendar-mode-btn:hover:not(.active) {
+  border-color: var(--color-ghost);
+  color: var(--color-ink);
+}
+
+/* 曜日ヘッダー */
+.weekday-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--color-edge);
+}
+
+.weekday-cell {
+  padding: var(--space-xs);
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-ghost);
+  letter-spacing: 0.1em;
+}
+
+/* モバイルでは短い曜日名を表示 */
+.weekday-label-full {
+  display: none;
+}
+
+.weekday-label-short {
+  display: inline;
+}
+
+@media (min-width: 640px) {
+  .weekday-label-full {
+    display: inline;
+  }
+
+  .weekday-label-short {
+    display: none;
+  }
+}
+
+/* 月表示 */
+.month-view {
+  border: 1px solid var(--color-edge);
+  border-top: none;
+}
+
+.month-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.week-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 80px;
+}
+
+@media (min-width: 640px) {
+  .week-row {
+    min-height: 100px;
+  }
+}
+
+/* 日付セル */
+.day-cell {
+  position: relative;
+  border-right: 1px solid var(--color-edge);
+  border-bottom: 1px solid var(--color-edge);
+  padding: 4px;
+  min-height: 60px;
+  overflow: hidden;
+}
+
+.day-cell:nth-child(7) {
+  border-right: none;
+}
+
+.day-cell.other-month {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.day-cell.other-month .day-number {
+  opacity: 0.3;
+}
+
+.day-cell.is-today .day-number {
+  background: var(--color-ink);
+  color: var(--color-void);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-number {
+  font-size: 11px;
+  color: var(--color-ink);
+  font-weight: 300;
+  margin-bottom: 4px;
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* イベントバー */
+.event-bar {
+  display: block;
+  padding: 2px 4px;
+  background: rgba(100, 120, 140, 0.15);
+  border-radius: 2px;
+  font-size: 9px;
+  color: var(--color-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background var(--duration-whisper) var(--easing-organic);
+}
+
+.event-bar:hover {
+  background: rgba(100, 120, 140, 0.25);
+}
+
+/* 複数日イベントのバー形状 */
+.event-bar.bar-start {
+  border-radius: 2px 0 0 2px;
+  margin-right: -4px;
+}
+
+.event-bar.bar-middle {
+  border-radius: 0;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+
+.event-bar.bar-end {
+  border-radius: 0 2px 2px 0;
+  margin-left: -4px;
+}
+
+.event-bar-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.more-events {
+  font-size: 9px;
+  color: var(--color-ghost);
+  padding: 2px 4px;
+}
+
+/* 週表示 */
+.week-view {
+  border: 1px solid var(--color-edge);
+  border-top: none;
+}
+
+.week-header-with-date .weekday-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-sm);
+}
+
+.week-header-with-date .weekday-label {
+  font-size: 10px;
+  color: var(--color-ghost);
+}
+
+.week-header-with-date .date-number {
+  font-size: 16px;
+  color: var(--color-ink);
+  font-weight: 300;
+}
+
+.week-header-with-date .weekday-cell.is-today .date-number {
+  background: var(--color-ink);
+  color: var(--color-void);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-events-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 200px;
+}
+
+.week-day-column {
+  border-right: 1px solid var(--color-edge);
+  padding: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.week-day-column:last-child {
+  border-right: none;
+}
+
+/* 日表示 */
+.day-view {
+  padding: var(--space-md);
+  border: 1px solid var(--color-edge);
+  border-top: none;
+  min-height: 200px;
+}
+
+.day-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.no-events {
+  text-align: center;
+  color: var(--color-ghost);
+  font-size: 12px;
+  opacity: 0.6;
+  padding: var(--space-xl) 0;
+}
+
+/* イベントアイテム */
+.event-item {
+  display: block;
+  text-decoration: none;
+  transition: opacity var(--duration-whisper) var(--easing-organic);
+}
+
+.event-item:hover {
+  opacity: 0.7;
+}
+
+.event-item.compact {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 2px;
+}
+
+.event-item.compact:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.event-dot {
+  width: 6px;
+  height: 6px;
+  background: rgba(100, 120, 140, 0.4);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.event-title-compact {
+  font-size: 10px;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-item.detailed {
+  padding: var(--space-md);
+  border: 1px solid var(--color-edge);
+  border-radius: 2px;
+}
+
+.event-item.detailed:hover {
+  border-color: var(--color-ghost);
+}
+
+.event-time {
+  font-size: 10px;
+  color: var(--color-ghost);
+  margin-bottom: var(--space-xs);
+}
+
+.event-title {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.event-excerpt {
+  font-size: 11px;
+  color: var(--color-ghost);
+  margin-top: var(--space-xs);
+  line-height: 1.6;
+}
+
+/* モバイル最適化 */
+@media (max-width: 640px) {
+  .calendar-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .calendar-title {
+    order: -1;
+    margin-bottom: var(--space-xs);
+  }
+
+  .calendar-nav,
+  .calendar-mode-switch {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .day-cell {
+    min-height: 50px;
+    padding: 2px;
+  }
+
+  .day-number {
+    font-size: 10px;
+  }
+
+  .event-bar {
+    font-size: 8px;
+    padding: 1px 2px;
+  }
+
+  .week-events-grid {
+    min-height: 150px;
+  }
+
+  .week-header-with-date .date-number {
+    font-size: 14px;
+  }
+
+  .week-header-with-date .weekday-cell.is-today .date-number {
+    width: 24px;
+    height: 24px;
+  }
 }

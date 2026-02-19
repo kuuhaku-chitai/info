@@ -6,6 +6,7 @@
  *
  * 構成:
  * - 画面の80%以上は空白
+ * - 中央に最新のお知らせ（最大5件）
  * - カウントダウンは右下隅に微かに存在
  * - サイト名は左上隅に消えかけた状態で表示
  * - 天候演出が背景でゆっくりと展開（Open-Meteo API連携）
@@ -14,8 +15,27 @@
 import { Suspense } from 'react';
 import { CountdownServer } from '@/components/countdown';
 import { WeatherAtmosphereClient } from '@/components/weather';
+import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
+import { NewsSection } from '@/components/news';
+import { SocialLinks } from '@/components/social';
+import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  // 公開中のお知らせを取得（最新5件）
+  const allNews = await fetchPostsByCategory('news');
+  const latestNews = allNews
+    .filter((post) => post.isPublished)
+    .slice(0, 5);
+
+  // ソーシャルリンクを取得
+  const socialLinks = await fetchAllSocialLinks();
+
+  // 公開中の固定ページを取得（メニュー表示用）
+  const pages = await fetchPublishedPages();
+
   return (
     <div className="void-embrace relative">
       {/*
@@ -36,14 +56,19 @@ export default function HomePage() {
       </header>
 
       {/*
-        中央エリア - 意図的に空にする
-        この「何もない」空間が主役
+        ソーシャルリンク - 右上隅に配置（PC only）
+        控えめなアイコンで外部リンクを提供
+      */}
+      <div className="hug-corner-tr z-10 hidden md:block fade-in-slow">
+        <SocialLinks links={socialLinks} size="small" />
+      </div>
+
+      {/*
+        中央エリア - お知らせを表示
+        お知らせがない場合は「空白」を維持
       */}
       <div className="flex-1 flex items-center justify-center z-10">
-        {/*
-          ここには何も置かない。
-          「空白」は情報の不在によって意味を持つ。
-        */}
+        <NewsSection news={latestNews} />
       </div>
 
       {/*
@@ -59,27 +84,12 @@ export default function HomePage() {
       {/*
         ナビゲーション - 左下隅に配置
         最小限のリンクのみ。押し付けがましくない。
+        モバイルではメニュー内に移動するため非表示。
       */}
-      <nav className="hug-corner-bl z-10">
-        <ul className="flex gap-4 text-xs text-ghost">
-          <li>
-            <a
-              href="/blog"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              記録
-            </a>
-          </li>
-          <li>
-            <a
-              href="/schedule"
-              className="hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-            >
-              予定
-            </a>
-          </li>
-        </ul>
-      </nav>
+      <DesktopNav variant="corner" pages={pages} />
+
+      {/* モバイルメニュー（ソーシャルリンク付き） */}
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }
