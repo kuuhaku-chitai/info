@@ -1,0 +1,62 @@
+# ============================================
+# pnpm設定ファイル - 空白地帯プロジェクト
+# ============================================
+#
+# なぜこの設定が必要か:
+# - better-sqlite3はネイティブバインディングを持つため
+#   pnpmのデフォルトのシンボリックリンク構造では動作しない
+# - CommonJS (scripts/migrate.js) とESM (src/lib/db.ts) が
+#   同じネイティブモジュールを参照する必要がある
+
+# ============================================
+# ネイティブモジュールのhoisting
+# ============================================
+
+# better-sqlite3とその依存関係をnode_modules直下に配置
+# これによりネイティブバインディングが正常に解決される
+public-hoist-pattern[]=*better-sqlite3*
+public-hoist-pattern[]=*bindings*
+public-hoist-pattern[]=*prebuild-install*
+
+# katex（rehype-katexの依存関係）をhoistして
+# globals.cssからアクセスできるようにする
+public-hoist-pattern[]=*katex*
+
+# ============================================
+# ビルドツールの互換性確保
+# ============================================
+
+# @opennextjs/cloudflareのビルドプロセスがnode_modules構造に
+# 依存している可能性があるためhoistする
+public-hoist-pattern[]=*@opennextjs*
+
+# ============================================
+# 依存関係管理
+# ============================================
+
+# extraneousなWASMパッケージ(@emnapi/*, @napi-rs/*, @tybys/*)による
+# 誤検出を防ぐため、peer dependencies の厳密チェックを無効化
+strict-peer-dependencies=false
+
+# ============================================
+# node-linker設定
+# ============================================
+
+# npm/yarn互換のフラット構造を維持
+# - isolated: pnpmデフォルト（シンボリックリンク構造）
+# - hoisted: npm互換（フラット構造）← 採用
+# - pnp: Yarn PnP互換
+#
+# hoistedを選択した理由:
+# 1. better-sqlite3のネイティブバインディング互換性
+# 2. require.resolve()の挙動をnpmと同じに保つ
+# 3. pnpmの高速インストールは維持される
+node-linker=hoisted
+
+# ============================================
+# ビルドスクリプトの許可
+# ============================================
+
+# ネイティブモジュールのビルドスクリプトを自動承認
+# better-sqlite3, esbuild, sharp, workerdなどが対象
+enable-pre-post-scripts=true
