@@ -12,16 +12,18 @@
  */
 
 import Link from 'next/link';
-import type { Post, SocialLink } from '@/types';
+import type { Post, SocialLink, Page } from '@/types';
 import { Pagination } from '@/components/Pagination';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 
 interface BlogListViewProps {
   posts: Post[];
   socialLinks?: SocialLink[];
+  pages?: Page[];
 }
 
-export function BlogListView({ posts, socialLinks = [] }: BlogListViewProps) {
+export function BlogListView({ posts, socialLinks = [], pages = [] }: BlogListViewProps) {
   const categoryLabels: Record<string, string> = {
     article: '記事',
     note: 'メモ',
@@ -110,17 +112,10 @@ export function BlogListView({ posts, socialLinks = [] }: BlogListViewProps) {
         )}
       </main>
 
-      {/* 戻るリンク - モバイルでは非表示 */}
-      <nav className="hug-corner-bl hidden md:block">
-        <Link
-          href="/"
-          className="text-xs text-ghost hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-        >
-          ← 戻る
-        </Link>
-      </nav>
+      {/* デスクトップナビゲーション */}
+      <DesktopNav variant="corner" pages={pages} />
 
-      <MobileMenu socialLinks={socialLinks} />
-    </div>
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
+    </div >
   );
 }

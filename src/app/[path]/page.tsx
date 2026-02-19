@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { fetchPageByPath, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
@@ -82,15 +83,8 @@ export default async function StaticPage({ params }: PageProps) {
         <MarkdownRenderer content={page.markdown} />
       </article>
 
-      {/* フッターナビ */}
-      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
-        <Link
-          href="/"
-          className="text-xs text-ghost hover:text-ink transition-colors"
-        >
-          ← トップに戻る
-        </Link>
-      </nav>
+      {/* デスクトップナビゲーション */}
+      <DesktopNav variant="footer" pages={pages} />
 
       <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>

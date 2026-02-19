@@ -6,15 +6,25 @@
 
 import type { Metadata } from 'next';
 import { ContactForm } from './ContactForm';
+import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
+import { fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 
 export const metadata: Metadata = {
   title: 'お問い合わせ - 空白地帯',
   description: '空白地帯へのお問い合わせはこちらから。',
 };
 
-export default function ContactPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function ContactPage() {
   // Turnstile Site Key（環境変数から）
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+
+  const [socialLinks, pages] = await Promise.all([
+    fetchAllSocialLinks(),
+    fetchPublishedPages(),
+  ]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-16">
@@ -33,16 +43,11 @@ export default function ContactPage() {
         {/* フォーム */}
         <ContactForm siteKey={siteKey} />
 
-        {/* 戻るリンク */}
-        <div className="pt-4">
-          <a
-            href="/"
-            className="text-xs text-ghost hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-          >
-            ← 戻る
-          </a>
-        </div>
+        {/* デスクトップナビゲーション */}
+        <DesktopNav variant="footer" pages={pages} />
       </div>
+
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }

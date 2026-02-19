@@ -2,6 +2,12 @@
   "name": "kuuhaku-chitai",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": "please-use-pnpm",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.29.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,10 +17,10 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "db:migrate": "node scripts/migrate.js",
-    "setup": "npm run docker:up && npm run db:migrate",
-    "build:worker": "npx @opennextjs/cloudflare build && rm -rf .open-next/assets/assets/glb",
-    "deploy": "npm run build:worker && npx wrangler deploy",
-    "deploy:preview": "npm run build:worker && npx wrangler deploy --env preview"
+    "setup": "pnpm run docker:up && pnpm run db:migrate",
+    "build:worker": "pnpm dlx @opennextjs/cloudflare build && rm -rf .open-next/assets/assets/glb",
+    "deploy": "pnpm run build:worker && pnpm dlx wrangler deploy",
+    "deploy:preview": "pnpm run build:worker && pnpm dlx wrangler deploy --env preview"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.4.2",
@@ -23,11 +29,13 @@
     "@react-three/rapier": "^2.2.0",
     "better-sqlite3": "^12.6.2",
     "framer-motion": "^12.29.2",
+    "katex": "^0.16.28",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
     "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "simplex-noise": "^4.0.3",

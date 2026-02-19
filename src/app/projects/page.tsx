@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchPublishedProjects, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -112,15 +113,8 @@ export default async function ProjectsPage() {
         )}
       </div>
 
-      {/* フッターナビ */}
-      <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
-        <Link
-          href="/"
-          className="text-xs text-ghost hover:text-ink transition-colors"
-        >
-          ← トップに戻る
-        </Link>
-      </nav>
+      {/* デスクトップナビゲーション */}
+      <DesktopNav variant="footer" pages={pages} />
 
       <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>

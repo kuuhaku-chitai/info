@@ -14,7 +14,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import type { Post, SocialLink } from '@/types';
+import type { Post, SocialLink, Page } from '@/types';
+import { DesktopNav } from '@/components/ui/DesktopNav';
 import { BlogListView } from './BlogListView';
 
 // Blog3DSceneは動的インポート（SSRを避ける）
@@ -38,6 +39,7 @@ type ViewMode = 'list' | 'installation';
 interface BlogContentProps {
   posts: Post[];
   socialLinks?: SocialLink[];
+  pages?: Page[];
 }
 
 /**
@@ -75,7 +77,7 @@ function useIsMobile(): boolean | null {
   return isMobile;
 }
 
-export function BlogContent({ posts, socialLinks = [] }: BlogContentProps) {
+export function BlogContent({ posts, socialLinks = [], pages = [] }: BlogContentProps) {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -95,14 +97,14 @@ export function BlogContent({ posts, socialLinks = [] }: BlogContentProps) {
 
   // モバイルの場合はリストモードのみ
   if (isMobile) {
-    return <BlogListView posts={posts} socialLinks={socialLinks} />;
+    return <BlogListView posts={posts} socialLinks={socialLinks} pages={pages} />;
   }
 
   // PCの場合: モード切り替え可能
   return (
     <div className="relative min-h-screen">
       {/* リストモード */}
-      {viewMode === 'list' && <BlogListView posts={posts} socialLinks={socialLinks} />}
+      {viewMode === 'list' && <BlogListView posts={posts} socialLinks={socialLinks} pages={pages} />}
 
       {/* インスタレーションモード（3D空間） */}
       {viewMode === 'installation' && (
@@ -136,15 +138,10 @@ export function BlogContent({ posts, socialLinks = [] }: BlogContentProps) {
               </div>
             )}
 
-            {/* 戻るリンク */}
-            <nav className="pointer-events-auto hug-corner-bl">
-              <Link
-                href="/"
-                className="text-xs text-ghost hover:text-ink transition-colors duration-[var(--duration-subtle)]"
-              >
-                ← 戻る
-              </Link>
-            </nav>
+            {/* ナビゲーション */}
+            <div className="pointer-events-auto">
+              <DesktopNav variant="corner" pages={pages} />
+            </div>
 
             {/* 操作ヒント */}
             <div className="absolute bottom-[var(--space-lg)] left-1/2 -translate-x-1/2">
