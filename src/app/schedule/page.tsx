@@ -16,6 +16,15 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: '予定',
   description: 'イベント、展示、パフォーマンスの予定。',
+  openGraph: {
+    title: '予定',
+    description: 'イベント、展示、パフォーマンスの予定。',
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: '予定',
+    description: 'イベント、展示、パフォーマンスの予定。',
+  },
 };
 
 export default async function SchedulePage() {

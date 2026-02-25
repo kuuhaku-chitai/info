@@ -6,6 +6,7 @@
  * 「空白」のコンセプトを維持しながら、関連情報を控えめに提示。
  */
 
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -26,7 +27,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const project = await fetchProjectById(id);
 
@@ -34,9 +35,27 @@ export async function generateMetadata({ params }: PageProps) {
     return { title: '見つかりません' };
   }
 
+  const description = project.markdown.replace(/[#*_`\[\]()]/g, '').slice(0, 160);
+
   return {
     title: project.title,
-    description: project.markdown.slice(0, 160),
+    description,
+    openGraph: {
+      title: project.title,
+      description,
+      type: 'article',
+      ...(project.thumbnailUrl && {
+        images: [{ url: project.thumbnailUrl, width: 1200, height: 630 }],
+      }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: project.title,
+      description,
+      ...(project.thumbnailUrl && {
+        images: [project.thumbnailUrl],
+      }),
+    },
   };
 }
 

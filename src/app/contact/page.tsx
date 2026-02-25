@@ -11,8 +11,17 @@ import { DesktopNav } from '@/components/ui/DesktopNav';
 import { fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 
 export const metadata: Metadata = {
-  title: 'お問い合わせ - 空白地帯',
+  title: 'お問い合わせ',
   description: '空白地帯へのお問い合わせはこちらから。',
+  openGraph: {
+    title: 'お問い合わせ',
+    description: '空白地帯へのお問い合わせはこちらから。',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'お問い合わせ',
+    description: '空白地帯へのお問い合わせはこちらから。',
+  },
 };
 
 export const dynamic = 'force-dynamic';

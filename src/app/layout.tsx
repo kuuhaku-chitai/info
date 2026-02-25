@@ -30,7 +30,13 @@ const notoSansJP = Noto_Sans_JP({
  * メタデータ
  * SEOよりも「作品としての説明」を重視
  */
+/**
+ * metadataBase — OG画像やcanonical URLの絶対パス解決に必須
+ */
+const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://kuuhaku-chitai.net';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: '空白地帯',
     template: '%s | 空白地帯',
@@ -48,12 +54,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
+    url: siteUrl,
     siteName: '空白地帯',
     title: '空白地帯',
     description: '都市の空白、未完の美学、時間の有限性。',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: '空白地帯',
     description: '都市の空白、未完の美学、時間の有限性。',
   },

@@ -6,6 +6,7 @@
  * 既存ルート（/blog, /schedule等）はNext.jsが優先的に解決するため競合しない。
  */
 
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -21,7 +22,7 @@ interface PageProps {
   params: Promise<{ path: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { path } = await params;
   const page = await fetchPageByPath(path);
 
@@ -29,9 +30,26 @@ export async function generateMetadata({ params }: PageProps) {
     return { title: '見つかりません' };
   }
 
+  const description = page.markdown.replace(/[#*_`\[\]()]/g, '').slice(0, 160);
+
   return {
     title: page.title,
-    description: page.markdown.slice(0, 160),
+    description,
+    openGraph: {
+      title: page.title,
+      description,
+      ...(page.thumbnailUrl && {
+        images: [{ url: page.thumbnailUrl, width: 1200, height: 630 }],
+      }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.title,
+      description,
+      ...(page.thumbnailUrl && {
+        images: [page.thumbnailUrl],
+      }),
+    },
   };
 }
 

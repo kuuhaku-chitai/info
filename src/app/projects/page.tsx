@@ -17,6 +17,15 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: 'プロジェクト',
   description: 'プロジェクトの一覧。',
+  openGraph: {
+    title: 'プロジェクト',
+    description: 'プロジェクトの一覧。',
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: 'プロジェクト',
+    description: 'プロジェクトの一覧。',
+  },
 };
 
 export default async function ProjectsPage() {

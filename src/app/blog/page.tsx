@@ -19,6 +19,15 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: '記録',
   description: '断片的な思考、エッセイ、メモの蓄積。',
+  openGraph: {
+    title: '記録',
+    description: '断片的な思考、エッセイ、メモの蓄積。',
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: '記録',
+    description: '断片的な思考、エッセイ、メモの蓄積。',
+  },
 };
 
 export default async function BlogPage() {
