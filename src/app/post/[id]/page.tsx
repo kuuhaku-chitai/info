@@ -152,7 +152,6 @@ export default async function PostPage({ params }: PageProps) {
         )}
       </article>
       {/* 戻るリンク */}
-      {backLink}
       <nav className="max-w-2xl mx-auto mt-16 pt-8 border-t border-edge hidden md:block">
         <Link
           href={backLink}
