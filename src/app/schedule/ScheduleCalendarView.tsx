@@ -11,6 +11,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import type { Post } from '@/types';
+import { stripMarkdown } from '@/lib/utils';
 import {
   type CalendarViewMode,
   generateMonthGrid,
@@ -349,8 +350,7 @@ function EventItem({
       <h3 className="event-title">{event.title}</h3>
       {detailed && event.markdown && (
         <p className="event-excerpt">
-          {event.markdown.slice(0, 100)}
-          {event.markdown.length > 100 && '...'}
+          {stripMarkdown(event.markdown, 100)}
         </p>
       )}
     </Link>

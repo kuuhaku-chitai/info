@@ -19,7 +19,7 @@ import {
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { DesktopNav } from '@/components/ui/DesktopNav';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { getOptimizedImageUrl, stripMarkdown } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: '見つかりません' };
   }
 
-  const description = project.markdown.replace(/[#*_`\[\]()]/g, '').slice(0, 160);
+  const description = stripMarkdown(project.markdown, 160);
 
   return {
     title: project.title,

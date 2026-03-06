@@ -16,6 +16,7 @@ import type { Post, SocialLink, Page } from '@/types';
 import { Pagination } from '@/components/Pagination';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { DesktopNav } from '@/components/ui/DesktopNav';
+import { stripMarkdown } from '@/lib/utils';
 
 interface BlogListViewProps {
   posts: Post[];
@@ -98,8 +99,7 @@ export function BlogListView({ posts, socialLinks = [], pages = [] }: BlogListVi
                         {/* 抜粋 */}
                         {post.markdown && (
                           <p className="text-xs text-ghost mt-2 line-clamp-2 leading-relaxed opacity-60">
-                            {post.markdown.slice(0, 100)}
-                            {post.markdown.length > 100 && '...'}
+                            {stripMarkdown(post.markdown, 100)}
                           </p>
                         )}
                       </Link>

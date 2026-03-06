@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { fetchPublishedProjects, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { DesktopNav } from '@/components/ui/DesktopNav';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { getOptimizedImageUrl, stripMarkdown } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +109,7 @@ export default async function ProjectsPage() {
                   {/* 概要（最初の100文字） */}
                   {project.markdown && (
                     <p className="text-xs text-ghost leading-relaxed line-clamp-2">
-                      {project.markdown.replace(/[#*_`\[\]()]/g, '').slice(0, 100)}
+                      {stripMarkdown(project.markdown, 100)}
                     </p>
                   )}
                 </article>

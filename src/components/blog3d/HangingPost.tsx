@@ -17,6 +17,7 @@ import {
   useSphericalJoint,
   BallCollider,
 } from '@react-three/rapier';
+import { stripMarkdown } from '@/lib/utils';
 import * as THREE from 'three';
 import type { Post } from '@/types';
 import { FLOOR_BOUNDS, CEILING_Y } from './floorConfig';
@@ -68,8 +69,7 @@ function PostUI({ post, onClick }: PostUIProps) {
       </h2>
       {post.markdown && (
         <p className="text-xs text-ghost mt-2 line-clamp-2 leading-relaxed">
-          {post.markdown.slice(0, 60)}
-          {post.markdown.length > 60 && '...'}
+          {stripMarkdown(post.markdown, 60)}
         </p>
       )}
     </div>

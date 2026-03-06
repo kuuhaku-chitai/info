@@ -9,6 +9,7 @@
 
 import Link from 'next/link';
 import type { Post } from '@/types';
+import { stripMarkdown } from '@/lib/utils';
 
 interface ScheduleListViewProps {
   events: Post[];
@@ -67,8 +68,7 @@ export function ScheduleListView({ events }: ScheduleListViewProps) {
           {/* 抜粋（最初の100文字） */}
           {event.markdown && (
             <p className="text-xs text-ghost mt-3 line-clamp-2 leading-relaxed">
-              {event.markdown.slice(0, 100)}
-              {event.markdown.length > 100 && '...'}
+              {stripMarkdown(event.markdown, 100)}
             </p>
           )}
 
