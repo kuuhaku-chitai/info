@@ -17,6 +17,7 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "db:migrate": "node scripts/migrate.js",
+    "db:restore": "node scripts/restore-from-prod.js",
     "setup": "pnpm run docker:up && pnpm run db:migrate",
     "build:worker": "pnpm dlx @opennextjs/cloudflare build && rm -rf .open-next/assets/assets/glb",
     "deploy": "pnpm run build:worker && pnpm dlx wrangler deploy",

@@ -50,3 +50,6 @@ next-env.d.ts
 
 # docs
 /docs
+
+# scripts
+/scripts/restore-from-prod.js

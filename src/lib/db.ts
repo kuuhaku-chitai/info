@@ -23,7 +23,8 @@ interface DbRow {
 // ============================================
 
 const isProduction = process.env.NODE_ENV === 'production';
-const useD1Api = !!process.env.CLOUDFLARE_D1_API_TOKEN;
+// ローカル開発時は常にSQLiteを使用（CLOUDFLARE_D1_API_TOKEN は db:restore スクリプトでも使用するため）
+const useD1Api = isProduction && !!process.env.CLOUDFLARE_D1_API_TOKEN;
 
 // ============================================
 // D1 REST API クライアント（本番用）
