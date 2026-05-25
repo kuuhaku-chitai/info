@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "npm": "please-use-pnpm",
     "pnpm": ">=9.0.0"
   },
@@ -56,5 +56,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.61.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

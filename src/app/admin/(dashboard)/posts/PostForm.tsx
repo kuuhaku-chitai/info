@@ -85,7 +85,9 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
           isPublished,
           date: post?.date ?? new Date().toISOString(),
           thumbnailUrl,
-          projectId: projectId || undefined,
+          // 空文字のまま送る: undefined にすると updatePost が「変更なし」と判定し、
+          // プロジェクト紐付けを「なし」に戻せなくなるため。db 側で falsy → null に変換される
+          projectId: projectId as string | undefined,
           eventStartDate:
             category === 'event' && eventStartDate
               ? new Date(eventStartDate).toISOString()

@@ -157,7 +157,7 @@ export function clearSessionCookie(isSecure: boolean): string {
 
 /**
  * Cookie ヘッダー文字列からセッション ID を抽出
- * （middleware 用: cookies() が使えない場面向け）
+ * （proxy 用: cookies() が使えない場面向け）
  */
 export function getSessionCookieValue(
   cookieHeader: string | null
