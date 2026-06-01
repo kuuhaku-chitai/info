@@ -13,8 +13,8 @@
  * 「都市に吊るされた思考の断片」のインスタレーション。
  */
 
-import { Suspense, useState, useCallback, useMemo, useEffect } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Suspense, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -45,12 +45,33 @@ const POSTS_PER_PAGE = 5;
 // カメラズームを制御するコンポーネント
 function CameraController({ zoom }: { zoom: number }) {
   const { camera } = useThree();
+  const cameraRef = useRef(camera) // cameraをrefに保持
+  const targetZoom = useRef(zoom)
+
+  /*useEffect(() => {
+    // カメラのZ位置をズームレベルに合わせて更新
+    if (cameraRef.current) {
+      cameraRef.current.position.z = zoom;
+      cameraRef.current.updateProjectionMatrix();
+    }
+  }, [camera, zoom]);*/
 
   useEffect(() => {
-    // カメラのZ位置をズームレベルに合わせて更新
-    camera.position.z = zoom;
-    camera.updateProjectionMatrix();
-  }, [camera, zoom]);
+    targetZoom.current = zoom
+  }, [zoom])
+
+  useFrame(() => {
+    if (cameraRef.current) {
+      cameraRef.current.position.z = THREE.MathUtils.lerp(
+        camera.position.z,
+        targetZoom.current,
+        0.1   // 0.05〜0.2くらいが自然。大きいほど速く追従
+      )
+      // 必要なら
+      cameraRef.current.updateProjectionMatrix()
+    }
+    //if (cameraRef.current) cameraRef.current.position.z = THREE.MathUtils.lerp(camera.position.z, zoom, 0.1)
+  })
 
   return null;
 }
