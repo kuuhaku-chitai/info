@@ -36,6 +36,17 @@ function generateTempId(): string {
   return `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+// UTC ISO 文字列を datetime-local input 用のローカル時刻文字列に変換
+// "2026-06-01T09:00:00.000Z" → "2026-06-01T18:00" (JST環境の場合)
+function isoToLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
 export function PostForm({ post, projects = [] }: PostFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -55,10 +66,10 @@ export function PostForm({ post, projects = [] }: PostFormProps) {
   );
   const [projectId, setProjectId] = useState<string>(post?.projectId ?? '');
   const [eventStartDate, setEventStartDate] = useState(
-    post?.eventStartDate?.slice(0, 16) ?? ''
+    post?.eventStartDate ? isoToLocalDatetimeInput(post.eventStartDate) : ''
   );
   const [eventEndDate, setEventEndDate] = useState(
-    post?.eventEndDate?.slice(0, 16) ?? ''
+    post?.eventEndDate ? isoToLocalDatetimeInput(post.eventEndDate) : ''
   );
 
   const isEditing = !!post;

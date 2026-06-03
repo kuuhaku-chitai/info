@@ -291,7 +291,7 @@ strong {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: var(--space-xl);
+  padding: var(--space-md);
 }
 
 /* コンテンツを画面の端に寄せる（空白を強調） */

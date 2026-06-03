@@ -24,7 +24,7 @@ interface ScheduleContentProps {
 }
 
 export function ScheduleContent({ events, socialLinks = [], pages = [] }: ScheduleContentProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
 
   const toggleMode = useCallback(() => {
     setViewMode((prev) => (prev === 'list' ? 'calendar' : 'list'));
@@ -43,7 +43,7 @@ export function ScheduleContent({ events, socialLinks = [], pages = [] }: Schedu
       </header>
 
       {/* メインコンテンツ */}
-      <div className="flex-1 flex flex-col items-center justify-start px-4 md:px-8 pt-24 pb-24">
+      <div className="flex-1 flex flex-col w-full items-center justify-start px-4 md:px-2 pt-24 pb-24">
         <h1 className="text-ghost text-sm tracking-[0.3em] font-light mb-8 fade-in-slow">
           予定
         </h1>

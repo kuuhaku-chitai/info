@@ -5,7 +5,7 @@
 # D1 は REST API、R2 はバインディングで接続。
 
 name = "kuuhaku-chitai"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
 # opennextjs-cloudflare のビルド出力

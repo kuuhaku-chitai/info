@@ -4,17 +4,18 @@
  * admin サブドメインでは Cookie の存在をチェック（ルーティングガード）。
  * 実際のセッション検証は (dashboard)/layout.tsx で行う。
  *
- * Proxy で D1 を叩かない理由:
+ * middleware で D1 を叩かない理由:
  * db.ts は better-sqlite3 を動的 import するため Edge Runtime で使用不可。
  * Cookie 存在チェックだけで未認証ユーザーを弾き、
  * セッション失効は layout の getSession() で捕捉する。
  *
- * Next.js 16 で middleware → proxy にリネームされた（ファイル名・関数名とも）
+ * NOTE: @opennextjs/cloudflare が proxy.ts 規約未対応のため middleware.ts を維持。
+ * dev モードで "proxy" への移行警告が出るが、ビルド互換性を優先する。
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
 
