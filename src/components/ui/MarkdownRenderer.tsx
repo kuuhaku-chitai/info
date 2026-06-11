@@ -9,6 +9,8 @@
  * 「空白地帯」のデザインコンセプトに合わせたスタイリング。
  */
 
+import { isValidElement, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -17,6 +19,13 @@ import rehypeKatex from 'rehype-katex';
 import Image from 'next/image';
 import type { Components } from 'react-markdown';
 import { getOptimizedImageUrl } from '@/lib/utils';
+
+// mermaidはd3/dagreを含む巨大ライブラリ。ssr:false でクライアント専用チャンクに分離し、
+// サーバー(Worker)バンドルへ混入させない（3MiB制限超過を防ぐ）。
+// 図は閲覧時のみ動的ロードされ、通常ページ・サーバーサイズには影響しない。
+const Mermaid = dynamic(() => import('./Mermaid').then((m) => m.Mermaid), {
+    ssr: false,
+});
 
 // iframe埋め込みを許可する信頼ドメイン
 const TRUSTED_IFRAME_DOMAINS = [
@@ -37,6 +46,18 @@ function isTrustedIframeSrc(src: string): boolean {
     } catch {
         return false;
     }
+}
+
+// React要素ツリーから生テキストを再帰的に抽出する。
+// mermaidコードブロックの中身（複数行のソース）を取り出すために使用。
+function extractText(node: ReactNode): string {
+    if (typeof node === 'string') return node;
+    if (typeof node === 'number') return String(node);
+    if (Array.isArray(node)) return node.map(extractText).join('');
+    if (isValidElement(node)) {
+        return extractText((node.props as { children?: ReactNode }).children);
+    }
+    return '';
 }
 
 interface MarkdownRendererProps {
@@ -138,11 +159,26 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
                 </code>
             );
         },
-        pre: ({ children }) => (
-            <pre className="bg-[#f5f5f5] p-4 rounded text-xs font-mono overflow-x-auto my-4">
-                {children}
-            </pre>
-        ),
+        pre: ({ children }) => {
+            // react-markdownはコードブロックを <pre><code class="language-xxx"> でラップする。
+            // language-mermaid の場合はコードボックスではなく図としてレンダリングする。
+            const codeChild = Array.isArray(children) ? children[0] : children;
+            if (isValidElement(codeChild)) {
+                const codeProps = codeChild.props as {
+                    className?: string;
+                    children?: ReactNode;
+                };
+                if (codeProps.className?.includes('language-mermaid')) {
+                    const chart = extractText(codeProps.children).trim();
+                    return <Mermaid chart={chart} />;
+                }
+            }
+            return (
+                <pre className="bg-[#f5f5f5] p-4 rounded text-xs font-mono overflow-x-auto my-4">
+                    {children}
+                </pre>
+            );
+        },
 
         // 画像
         img: ({ src, alt }) => {
