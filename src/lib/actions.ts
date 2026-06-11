@@ -8,10 +8,10 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page } from '@/types';
+import { type Post, type Project, type Donation, type CountdownState, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page, type SpaceBranch, type VersionRecord, type VersionRecordDetail, type VersionGraphData } from '@/types';
 import { SECONDS_PER_MONTH } from './constants';
 import * as db from './db';
-import { notifyLifespanExtension, notifyNewEvent, notifyNewInquiry } from './discord';
+import { notifyLifespanExtension, notifyNewEvent, notifyNewInquiry, notifyNewVersion } from './discord';
 import { calculateRemainingSeconds } from './countdown';
 import { getSession } from './auth';
 
@@ -554,6 +554,282 @@ export async function deleteExistingPage(id: string): Promise<boolean> {
   if (existing) {
     revalidatePath(`/${existing.path}`);
   }
+
+  return true;
+}
+
+// ============================================
+// 物理的バージョン管理 Actions（空間のGit / DAG）
+// ============================================
+//
+// 画像はクライアントが /api/images（R2/MinIOアップロード）へ先にアップロードし、
+// 確定した画像URL配列を以下のActionへ渡す（既存の投稿フォームと同じ流儀）。
+// 画像フォルダはバージョンIDで分割される前提（posts/{versionId}/...）。
+// そのためフォームはバージョンIDをクライアント側で先に生成し、id として渡すこと
+// （削除時に deleteAllPostImages(versionId) でR2を確実に掃除できる）。
+
+/** 親IDの重複・自己参照を除いた配列を返す */
+function sanitizeParentIds(parentIds: string[] | undefined, selfId: string): string[] {
+  return Array.from(new Set(parentIds ?? [])).filter((pid) => pid && pid !== selfId);
+}
+
+/** バージョンに渡す画像メタデータ（URLはアップロード済み前提） */
+interface VersionImageInput {
+  imageUrl: string;
+  caption?: string;
+  sortOrder?: number;
+}
+
+interface CreateVersionInput {
+  /** クライアント生成のID（画像フォルダ分割に使用）。省略時はサーバー生成 */
+  id?: string;
+  branchId: string;
+  title: string;
+  content?: string;
+  reason?: string;
+  memory?: string;
+  locationNote?: string;
+  author?: string;
+  /** 親バージョンID（複数 = マージ） */
+  parentIds?: string[];
+  images?: VersionImageInput[];
+}
+
+interface UpdateVersionInput {
+  branchId?: string;
+  title?: string;
+  content?: string;
+  reason?: string;
+  memory?: string;
+  locationNote?: string;
+  author?: string;
+  /** 指定時は親エッジを総入れ替え（循環検知あり） */
+  parentIds?: string[];
+  /** 指定時は画像を総入れ替え */
+  images?: VersionImageInput[];
+}
+
+function revalidateSpacePaths(): void {
+  revalidatePath('/admin');
+  revalidatePath('/admin/space');
+  // 公開グラフ閲覧ビュー（DAG）
+  revalidatePath('/history');
+  revalidatePath('/');
+}
+
+// --- ブランチ ---
+
+export async function fetchAllBranches(): Promise<SpaceBranch[]> {
+  return db.getAllBranches();
+}
+
+export async function fetchBranchById(id: string): Promise<SpaceBranch | null> {
+  return db.getBranchById(id);
+}
+
+export async function createNewBranch(data: {
+  id?: string;
+  name: string;
+  description?: string;
+}): Promise<SpaceBranch> {
+  if (!data.name?.trim()) throw new Error('ブランチ名は必須です');
+
+  const now = new Date().toISOString();
+  const id = data.id ?? generateId();
+  const branch: SpaceBranch = {
+    id,
+    name: data.name.trim(),
+    description: data.description?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.createBranch(branch);
+  revalidateSpacePaths();
+
+  return branch;
+}
+
+export async function updateExistingBranch(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<SpaceBranch | null> {
+  const existing = await db.getBranchById(id);
+  if (!existing) return null;
+
+  await db.updateBranch(id, data);
+  revalidateSpacePaths();
+
+  return db.getBranchById(id);
+}
+
+export async function deleteExistingBranch(id: string): Promise<boolean> {
+  // ブランチ配下の各バージョンのR2画像フォルダを掃除してから削除
+  const versions = await db.getVersionsByBranch(id);
+  const { deleteAllPostImages } = await import('./storage');
+  await Promise.allSettled(versions.map((v) => deleteAllPostImages(v.id)));
+
+  await db.deleteBranch(id); // version/relation/image はCASCADEで連鎖削除
+  revalidateSpacePaths();
+
+  return true;
+}
+
+// --- バージョン（コミット） ---
+
+export async function fetchVersionsByBranch(branchId: string): Promise<VersionRecord[]> {
+  return db.getVersionsByBranch(branchId);
+}
+
+/** 画像・親IDを同梱した詳細を取得（詳細パネル・編集フォーム用） */
+export async function fetchVersionDetail(id: string): Promise<VersionRecordDetail | null> {
+  const version = await db.getVersionById(id);
+  if (!version) return null;
+
+  const [images, parentIds] = await Promise.all([
+    db.getImagesByVersionId(id),
+    db.getParentVersionIds(id),
+  ]);
+
+  return { ...version, images, parentIds };
+}
+
+/** グラフ描画用のDAGデータ一式（React Flow / Step 4） */
+export async function fetchVersionGraph(): Promise<VersionGraphData> {
+  const [branches, versions, relations] = await Promise.all([
+    db.getAllBranches(),
+    db.getAllVersions(),
+    db.getAllRelations(),
+  ]);
+
+  return { branches, versions, relations };
+}
+
+export async function createNewVersionRecord(data: CreateVersionInput): Promise<VersionRecord> {
+  const branch = await db.getBranchById(data.branchId);
+  if (!branch) throw new Error('指定されたブランチが存在しません');
+  if (!data.title?.trim()) throw new Error('タイトルは必須です');
+
+  const now = new Date().toISOString();
+  const id = data.id ?? generateId();
+
+  const version: VersionRecord = {
+    id,
+    branchId: data.branchId,
+    title: data.title.trim(),
+    content: data.content ?? '',
+    reason: data.reason?.trim() || undefined,
+    memory: data.memory?.trim() || undefined,
+    locationNote: data.locationNote?.trim() || undefined,
+    author: data.author?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.createVersion(version);
+
+  // 親エッジを追加。
+  // 新規バージョンは出力辺（子）を持たないため、親をいくつ追加しても循環は発生しない。
+  const parentIds = sanitizeParentIds(data.parentIds, id);
+  for (const parentId of parentIds) {
+    const parent = await db.getVersionById(parentId);
+    if (parent) {
+      await db.addRelation(parentId, id);
+    }
+  }
+
+  // 画像メタデータ（URLはアップロード済み）
+  const images = data.images ?? [];
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    await db.createVersionImage({
+      id: generateId(),
+      versionId: id,
+      imageUrl: img.imageUrl,
+      sortOrder: img.sortOrder ?? i,
+      caption: img.caption?.trim() || undefined,
+    });
+  }
+
+  // Discord通知（新規イベント / 複数親ならマージとして通知）
+  await notifyNewVersion(branch.name, version.title, parentIds.length > 1);
+
+  revalidateSpacePaths();
+
+  return version;
+}
+
+export async function updateExistingVersionRecord(
+  id: string,
+  data: UpdateVersionInput
+): Promise<VersionRecordDetail | null> {
+  const existing = await db.getVersionById(id);
+  if (!existing) return null;
+
+  // ブランチ変更時は実在チェック
+  if (data.branchId !== undefined && data.branchId !== existing.branchId) {
+    const branch = await db.getBranchById(data.branchId);
+    if (!branch) throw new Error('指定されたブランチが存在しません');
+  }
+
+  await db.updateVersion(id, {
+    branchId: data.branchId,
+    title: data.title?.trim(),
+    content: data.content,
+    reason: data.reason,
+    memory: data.memory,
+    locationNote: data.locationNote,
+    author: data.author,
+  });
+
+  // 親エッジの付け替え（循環検知）
+  if (data.parentIds !== undefined) {
+    const parentIds = sanitizeParentIds(data.parentIds, id);
+
+    // このバージョンから到達可能な子孫を親にすると循環する → 拒否
+    const descendants = await db.getDescendantVersionIds(id);
+    for (const parentId of parentIds) {
+      if (descendants.has(parentId)) {
+        throw new Error('循環が発生するため、その親は指定できません（子孫を親にできません）');
+      }
+    }
+
+    await db.removeParentRelations(id);
+    for (const parentId of parentIds) {
+      const parent = await db.getVersionById(parentId);
+      if (parent) {
+        await db.addRelation(parentId, id);
+      }
+    }
+  }
+
+  // 画像の貼り直し（指定時は総入れ替え）
+  if (data.images !== undefined) {
+    await db.deleteImagesByVersionId(id);
+    for (let i = 0; i < data.images.length; i++) {
+      const img = data.images[i];
+      await db.createVersionImage({
+        id: generateId(),
+        versionId: id,
+        imageUrl: img.imageUrl,
+        sortOrder: img.sortOrder ?? i,
+        caption: img.caption?.trim() || undefined,
+      });
+    }
+  }
+
+  revalidateSpacePaths();
+
+  return fetchVersionDetail(id);
+}
+
+export async function deleteExistingVersionRecord(id: string): Promise<boolean> {
+  // R2の画像フォルダ（posts/{id}/）を掃除してからDB削除（relation/imageはCASCADE）
+  const { deleteAllPostImages } = await import('./storage');
+  await deleteAllPostImages(id);
+
+  await db.deleteVersion(id);
+  revalidateSpacePaths();
 
   return true;
 }

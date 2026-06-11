@@ -8,7 +8,7 @@
  * 開発時はbetter-sqlite3を使用し、本番はD1 REST APIを使用する。
  */
 
-import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page } from '@/types';
+import { type Post, type Project, type CountdownState, type Donation, type SocialLink, type AdminUser, type ContactInquiry, type InquiryType, type Page, type SpaceBranch, type VersionRecord, type VersionRelation, type VersionRecordImage } from '@/types';
 
 // ============================================
 // 型定義
@@ -1037,4 +1037,270 @@ export async function updatePage(
 
 export async function deletePage(id: string): Promise<void> {
   await execute('DELETE FROM pages WHERE id = ?', [id]);
+}
+
+// ============================================
+// 物理的バージョン管理（空間のGit / DAG）
+// ============================================
+
+// --- Row mappers ---
+
+function rowToBranch(row: DbRow): SpaceBranch {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    description: (row.description as string) || undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function rowToVersion(row: DbRow): VersionRecord {
+  return {
+    id: row.id as string,
+    branchId: row.branch_id as string,
+    title: row.title as string,
+    content: (row.content as string) ?? '',
+    reason: (row.reason as string) || undefined,
+    memory: (row.memory as string) || undefined,
+    locationNote: (row.location_note as string) || undefined,
+    author: (row.author as string) || undefined,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function rowToVersionImage(row: DbRow): VersionRecordImage {
+  return {
+    id: row.id as string,
+    versionId: row.version_id as string,
+    imageUrl: row.image_url as string,
+    sortOrder: row.sort_order as number,
+    caption: (row.caption as string) || undefined,
+    createdAt: row.created_at as string,
+  };
+}
+
+function rowToRelation(row: DbRow): VersionRelation {
+  return {
+    parentVersionId: row.parent_version_id as string,
+    childVersionId: row.child_version_id as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+// --- ブランチ ---
+
+export async function getAllBranches(): Promise<SpaceBranch[]> {
+  const rows = await query('SELECT * FROM space_branches ORDER BY created_at ASC');
+  return rows.map(rowToBranch);
+}
+
+export async function getBranchById(id: string): Promise<SpaceBranch | null> {
+  const row = await queryOne('SELECT * FROM space_branches WHERE id = ?', [id]);
+  return row ? rowToBranch(row) : null;
+}
+
+export async function createBranch(
+  branch: Omit<SpaceBranch, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string }
+): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO space_branches (id, name, description, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [branch.id, branch.name, branch.description || null, branch.createdAt || now, branch.updatedAt || now]
+  );
+}
+
+export async function updateBranch(id: string, update: Partial<SpaceBranch>): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (update.name !== undefined) {
+    fields.push('name = ?');
+    values.push(update.name);
+  }
+  if (update.description !== undefined) {
+    fields.push('description = ?');
+    values.push(update.description || null);
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(`UPDATE space_branches SET ${fields.join(', ')} WHERE id = ?`, values);
+}
+
+export async function deleteBranch(id: string): Promise<void> {
+  // 配下のversion_records / relations / images は ON DELETE CASCADE で連鎖削除される
+  await execute('DELETE FROM space_branches WHERE id = ?', [id]);
+}
+
+// --- バージョン（コミット） ---
+
+export async function getAllVersions(): Promise<VersionRecord[]> {
+  const rows = await query('SELECT * FROM version_records ORDER BY created_at ASC');
+  return rows.map(rowToVersion);
+}
+
+export async function getVersionsByBranch(branchId: string): Promise<VersionRecord[]> {
+  const rows = await query(
+    'SELECT * FROM version_records WHERE branch_id = ? ORDER BY created_at ASC',
+    [branchId]
+  );
+  return rows.map(rowToVersion);
+}
+
+export async function getVersionById(id: string): Promise<VersionRecord | null> {
+  const row = await queryOne('SELECT * FROM version_records WHERE id = ?', [id]);
+  return row ? rowToVersion(row) : null;
+}
+
+export async function createVersion(
+  version: Omit<VersionRecord, 'createdAt' | 'updatedAt'> & { createdAt?: string; updatedAt?: string }
+): Promise<void> {
+  const now = new Date().toISOString();
+  await execute(
+    `INSERT INTO version_records
+       (id, branch_id, title, content, reason, memory, location_note, author, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      version.id,
+      version.branchId,
+      version.title,
+      version.content ?? '',
+      version.reason || null,
+      version.memory || null,
+      version.locationNote || null,
+      version.author || null,
+      version.createdAt || now,
+      version.updatedAt || now,
+    ]
+  );
+}
+
+export async function updateVersion(id: string, update: Partial<VersionRecord>): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  const map: Record<string, string> = {
+    branchId: 'branch_id',
+    title: 'title',
+    content: 'content',
+    reason: 'reason',
+    memory: 'memory',
+    locationNote: 'location_note',
+    author: 'author',
+  };
+
+  for (const [key, column] of Object.entries(map)) {
+    const value = (update as Record<string, unknown>)[key];
+    if (value !== undefined) {
+      fields.push(`${column} = ?`);
+      // content は空文字を許容、それ以外の任意項目は falsy → null に正規化
+      values.push(key === 'content' ? (value ?? '') : (value || null));
+    }
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  await execute(`UPDATE version_records SET ${fields.join(', ')} WHERE id = ?`, values);
+}
+
+export async function deleteVersion(id: string): Promise<void> {
+  // relations / images は ON DELETE CASCADE で連鎖削除される
+  await execute('DELETE FROM version_records WHERE id = ?', [id]);
+}
+
+// --- エッジ（親子関係 / マージ） ---
+
+export async function getAllRelations(): Promise<VersionRelation[]> {
+  const rows = await query('SELECT * FROM version_relations');
+  return rows.map(rowToRelation);
+}
+
+export async function getParentVersionIds(childVersionId: string): Promise<string[]> {
+  const rows = await query<{ parent_version_id: string }>(
+    'SELECT parent_version_id FROM version_relations WHERE child_version_id = ?',
+    [childVersionId]
+  );
+  return rows.map((r) => r.parent_version_id);
+}
+
+export async function getChildVersionIds(parentVersionId: string): Promise<string[]> {
+  const rows = await query<{ child_version_id: string }>(
+    'SELECT child_version_id FROM version_relations WHERE parent_version_id = ?',
+    [parentVersionId]
+  );
+  return rows.map((r) => r.child_version_id);
+}
+
+export async function addRelation(parentVersionId: string, childVersionId: string): Promise<void> {
+  await execute(
+    `INSERT OR IGNORE INTO version_relations (parent_version_id, child_version_id, created_at)
+     VALUES (?, ?, ?)`,
+    [parentVersionId, childVersionId, new Date().toISOString()]
+  );
+}
+
+/** 指定バージョンを子とする親エッジをすべて削除（親の付け替え時に使用） */
+export async function removeParentRelations(childVersionId: string): Promise<void> {
+  await execute('DELETE FROM version_relations WHERE child_version_id = ?', [childVersionId]);
+}
+
+/**
+ * 指定バージョンから親→子方向に到達可能な全子孫IDを返す（DAG循環検知用）。
+ * 親エッジ追加時、追加しようとする親が新バージョンの子孫に含まれていれば循環となる。
+ */
+export async function getDescendantVersionIds(rootId: string): Promise<Set<string>> {
+  const visited = new Set<string>();
+  const stack: string[] = [rootId];
+
+  while (stack.length > 0) {
+    const current = stack.pop() as string;
+    const children = await getChildVersionIds(current);
+    for (const childId of children) {
+      if (!visited.has(childId)) {
+        visited.add(childId);
+        stack.push(childId);
+      }
+    }
+  }
+
+  return visited;
+}
+
+// --- バージョン画像 ---
+
+export async function getImagesByVersionId(versionId: string): Promise<VersionRecordImage[]> {
+  const rows = await query(
+    'SELECT * FROM version_record_images WHERE version_id = ? ORDER BY sort_order ASC, created_at ASC',
+    [versionId]
+  );
+  return rows.map(rowToVersionImage);
+}
+
+export async function createVersionImage(
+  image: Omit<VersionRecordImage, 'createdAt'> & { createdAt?: string }
+): Promise<void> {
+  await execute(
+    `INSERT INTO version_record_images (id, version_id, image_url, sort_order, caption, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      image.id,
+      image.versionId,
+      image.imageUrl,
+      image.sortOrder,
+      image.caption || null,
+      image.createdAt || new Date().toISOString(),
+    ]
+  );
+}
+
+/** 指定バージョンの画像メタデータをすべて削除（画像の貼り直し時に使用） */
+export async function deleteImagesByVersionId(versionId: string): Promise<void> {
+  await execute('DELETE FROM version_record_images WHERE version_id = ?', [versionId]);
 }

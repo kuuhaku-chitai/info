@@ -247,6 +247,106 @@ export interface Page {
 }
 
 // ============================================
+// 物理的バージョン管理（空間のGit / DAG）
+// ============================================
+
+/**
+ * ブランチ。変更履歴を束ねる単位（Gitのbranchに相当）。
+ * 例: 「2026春レイアウト」「ギャラリー化計画」
+ */
+export interface SpaceBranch {
+  /** 一意識別子 */
+  id: string;
+  /** ブランチ名 */
+  name: string;
+  /** 説明 */
+  description?: string;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
+}
+
+/**
+ * バージョン。変更履歴の本体（Gitのcommitに相当）。
+ * 空間の「変容」と、そこに宿る「記憶（memory）」を1つの記録に束ねる。
+ */
+export interface VersionRecord {
+  /** 一意識別子 */
+  id: string;
+  /** 所属ブランチID */
+  branchId: string;
+  /** 変更のタイトル */
+  title: string;
+  /** 変更内容（Markdown） */
+  content: string;
+  /** 変更理由 */
+  reason?: string;
+  /** その場所で起きた、定量化しにくい出来事・記憶（ナラティブ） */
+  memory?: string;
+  /** 空間内の具体的な位置に関するメモ */
+  locationNote?: string;
+  /** 変更者（自由記述） */
+  author?: string;
+  /** 作成日時 */
+  createdAt: string;
+  /** 更新日時 */
+  updatedAt: string;
+}
+
+/**
+ * バージョン間の親子エッジ。
+ * 1つの child に複数の parent が存在する場合、それが「マージ（合流）」を意味する。
+ */
+export interface VersionRelation {
+  /** 派生元（親）のバージョンID */
+  parentVersionId: string;
+  /** 派生先（子）のバージョンID */
+  childVersionId: string;
+  /** 作成日時 */
+  createdAt: string;
+}
+
+/**
+ * バージョンに紐づく画像（R2のメタデータ）。
+ * sortOrder で「変更前・変更中・変更後」などの表示順を制御する。
+ */
+export interface VersionRecordImage {
+  /** 一意識別子 */
+  id: string;
+  /** 紐づくバージョンID */
+  versionId: string;
+  /** R2上の画像URL */
+  imageUrl: string;
+  /** 表示順（小さいほど先） */
+  sortOrder: number;
+  /** 画像へのメモ */
+  caption?: string;
+  /** 作成日時 */
+  createdAt: string;
+}
+
+/**
+ * バージョンの詳細（画像・親エッジを同梱）。
+ * 詳細パネルや編集フォームでまとめて扱うための合成型。
+ */
+export interface VersionRecordDetail extends VersionRecord {
+  /** 紐づく画像（sortOrder昇順） */
+  images: VersionRecordImage[];
+  /** 親バージョンのID（複数 = マージの合流元） */
+  parentIds: string[];
+}
+
+/**
+ * グラフ描画用のDAGデータ一式（React Flow用 / Step 4）。
+ */
+export interface VersionGraphData {
+  branches: SpaceBranch[];
+  versions: VersionRecord[];
+  relations: VersionRelation[];
+}
+
+// ============================================
 // UI Component Types
 // ============================================
 

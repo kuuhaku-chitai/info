@@ -73,6 +73,14 @@ export default async function DashboardLayout({
                 </li>
                 <li>
                   <Link
+                    href="/space"
+                    className="hover:text-ink transition-colors"
+                  >
+                    空間
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/donations"
                     className="hover:text-ink transition-colors"
                   >

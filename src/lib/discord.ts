@@ -139,6 +139,30 @@ export async function notifyNewEvent(
 }
 
 /**
+ * 新規バージョン（空間の変更履歴）の記録を通知する。
+ * 物理空間に新たな「変容」が刻まれたことを知らせる（CLAUDE.mdルール4: 新規イベント時の通知）。
+ *
+ * @param branchName 所属ブランチ名
+ * @param versionTitle バージョンのタイトル
+ * @param isMerge 複数の親を持つマージ（合流）かどうか
+ */
+export async function notifyNewVersion(
+  branchName: string,
+  versionTitle: string,
+  isMerge = false
+): Promise<boolean> {
+  return sendDiscordNotification({
+    type: 'event',
+    message: isMerge ? '⟡ 空間の合流（マージ）' : '⟡ 空間の変容',
+    embed: {
+      title: versionTitle,
+      description: `ブランチ: ${branchName}`,
+      color: DISCORD_COLORS.event,
+    },
+  });
+}
+
+/**
  * マイルストーン通知を送信する
  * 残り100日、50日、30日などの節目で呼び出す
  *
