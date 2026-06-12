@@ -44,15 +44,8 @@ export default async function ProjectsPage() {
           className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors duration-[var(--duration-subtle)]"
         >
           空白地帯
-        </Link>
+        </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | プロジェクト</span>
       </header>
-
-      {/* タイトル */}
-      <div className="max-w-2xl mx-auto mb-12 fade-in-slow">
-        <h1 className="text-lg font-light text-ink tracking-wide">
-          プロジェクト
-        </h1>
-      </div>
 
       {/* プロジェクト一覧 */}
       <div className="max-w-2xl mx-auto fade-in-slow">

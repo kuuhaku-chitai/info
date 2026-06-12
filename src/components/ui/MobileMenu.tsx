@@ -49,6 +49,7 @@ export function MobileMenu({ socialLinks = [], pages = [] }: MobileMenuProps) {
         { href: '/blog', label: '記録' },
         { href: '/schedule', label: '予定' },
         { href: '/projects', label: 'プロジェクト' },
+        { href: '/history', label: '変容の履歴' },
         { href: '/contact', label: '問い合わせ' },
         ...pages.map((p) => ({ href: `/${p.path}`, label: p.title })),
     ];

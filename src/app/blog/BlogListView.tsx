@@ -41,16 +41,11 @@ export function BlogListView({ posts, socialLinks = [], pages = [] }: BlogListVi
           className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors duration-[var(--duration-subtle)]"
         >
           空白地帯
-        </Link>
+        </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | 記録</span>
       </header>
 
       {/* メインコンテンツ */}
       <main className="pt-[calc(var(--space-lg)*3)] pb-[calc(var(--space-lg)*3)] px-[var(--space-lg)]">
-        {/* タイトル */}
-        <h1 className="text-ghost text-sm tracking-[0.3em] font-light mb-[var(--space-lg)] fade-in-slow text-center">
-          記録
-        </h1>
-
         {/* 記事リスト */}
         {posts.length === 0 ? (
           <div className="flex items-center justify-center min-h-[50vh]">

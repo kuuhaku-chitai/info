@@ -40,7 +40,13 @@ export function HistoryGraph({ data }: HistoryGraphProps) {
 
   useEffect(() => {
     init(data);
-  }, [data, init]);
+    // URLハッシュに一致するバージョンIDがあればパネルを自動オープン
+    // トップページの /history#versionId リンクからの遷移に対応
+    const hash = window.location.hash.slice(1);
+    if (hash && data.versions.some((v) => v.id === hash)) {
+      void selectVersion(hash);
+    }
+  }, [data, init, selectVersion]);
 
   const handleNodeClick: NodeMouseHandler<Node<VersionNodeData>> = (_, node) => {
     void selectVersion(node.id);

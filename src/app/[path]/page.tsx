@@ -74,7 +74,7 @@ export default async function StaticPage({ params }: PageProps) {
           className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors duration-[var(--duration-subtle)]"
         >
           空白地帯
-        </Link>
+        </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | {page.title}</span>
       </header>
 
       {/* メインコンテンツ */}
@@ -91,11 +91,6 @@ export default async function StaticPage({ params }: PageProps) {
             />
           </div>
         )}
-
-        {/* タイトル */}
-        <h1 className="text-xl font-light text-ink tracking-wide mb-12 leading-relaxed">
-          {page.title}
-        </h1>
 
         {/* 本文 */}
         <MarkdownRenderer content={page.markdown} />

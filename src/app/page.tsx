@@ -19,22 +19,25 @@ import { MobileMenu } from '@/components/ui/MobileMenu';
 import { DesktopNav } from '@/components/ui/DesktopNav';
 import { NewsSection } from '@/components/news';
 import { SocialLinks } from '@/components/social';
-import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
+import { fetchPostsByCategory, fetchAllSocialLinks, fetchPublishedPages, fetchVersionGraph } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // 公開中のお知らせを取得（最新5件）
-  const allNews = await fetchPostsByCategory('news');
-  const latestNews = allNews
-    .filter((post) => post.isPublished)
+  // 並行取得でTTFBを最小化
+  const [allNews, socialLinks, pages, graph] = await Promise.all([
+    fetchPostsByCategory('news'),
+    fetchAllSocialLinks(),
+    fetchPublishedPages(),
+    fetchVersionGraph(),
+  ]);
+
+  const latestNews = allNews.filter((post) => post.isPublished).slice(0, 5);
+
+  // 最新バージョン（変更履歴）最大5件（createdAt降順）
+  const latestVersions = [...graph.versions]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5);
-
-  // ソーシャルリンクを取得
-  const socialLinks = await fetchAllSocialLinks();
-
-  // 公開中の固定ページを取得（メニュー表示用）
-  const pages = await fetchPublishedPages();
 
   return (
     <div className="void-embrace relative">
@@ -68,7 +71,39 @@ export default async function HomePage() {
         お知らせがない場合は「空白」を維持
       */}
       <div className="flex-1 flex items-center justify-center z-10">
-        <NewsSection news={latestNews} />
+        <div className="w-full max-w-sm px-4 space-y-8">
+          <NewsSection news={latestNews} />
+
+          {latestVersions.length > 0 && (
+            <div>
+              <h2 className="text-[10px] text-ghost tracking-[0.3em] mb-4 text-center opacity-60">
+                変容の履歴
+              </h2>
+              <ul className="space-y-3">
+                {latestVersions.map((v, index) => (
+                  <li
+                    key={v.id}
+                    className="fade-in-slow"
+                    style={{ animationDelay: `${0.3 + index * 0.15}s` }}
+                  >
+                    <a href={`/history#${v.id}`} className="group block">
+                      <time className="text-[9px] text-ghost opacity-50 tracking-wider">
+                        {new Date(v.createdAt).toLocaleDateString('ja-JP', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </time>
+                      <p className="text-xs text-ghost leading-relaxed mt-0.5 group-hover:text-ink transition-colors duration-[var(--duration-subtle)]">
+                        {v.title}
+                      </p>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       {/*

@@ -5,6 +5,7 @@
  */
 
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ContactForm } from './ContactForm';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 import { DesktopNav } from '@/components/ui/DesktopNav';
@@ -38,11 +39,16 @@ export default async function ContactPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-lg space-y-8">
-        {/* ページタイトル — 控えめに */}
+        {/* ヘッダー */}
+        <header className="max-w-2xl mx-auto mb-16">
+          <Link
+            href="/"
+            className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors duration-[var(--duration-subtle)]"
+          >
+            空白地帯
+          </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | お問い合わせ</span>
+        </header>
         <div>
-          <h1 className="text-sm font-medium text-ink tracking-wide">
-            お問い合わせ
-          </h1>
           <p className="text-xs text-ghost mt-2 leading-relaxed">
             ご質問・ご依頼・取材等のお問い合わせを受け付けています。<br />
             通常、2〜3営業日以内にご返信いたします。

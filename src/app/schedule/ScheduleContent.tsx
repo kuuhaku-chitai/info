@@ -39,15 +39,11 @@ export function ScheduleContent({ events, socialLinks = [], pages = [] }: Schedu
           className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors duration-[var(--duration-subtle)]"
         >
           空白地帯
-        </Link>
+        </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | 予定</span>
       </header>
 
       {/* メインコンテンツ */}
       <div className="flex-1 flex flex-col w-full items-center justify-start px-4 md:px-2 pt-24 pb-24">
-        <h1 className="text-ghost text-sm tracking-[0.3em] font-light mb-8 fade-in-slow">
-          予定
-        </h1>
-
         {/* ビュー */}
         <div className="w-full max-w-4xl fade-in-slow" style={{ animationDelay: '0.2s' }}>
           {viewMode === 'list' ? (

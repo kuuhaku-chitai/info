@@ -7,8 +7,10 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { fetchVersionGraph } from '@/lib/actions';
+import { fetchVersionGraph, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { HistoryView } from '@/components/history/HistoryView';
+import { DesktopNav } from '@/components/ui/DesktopNav';
+import { MobileMenu } from '@/components/ui/MobileMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,21 +20,24 @@ export const metadata: Metadata = {
 };
 
 export default async function HistoryPage() {
-  const graph = await fetchVersionGraph();
+  const [graph, socialLinks, pages] = await Promise.all([
+    fetchVersionGraph(),
+    fetchAllSocialLinks(),
+    fetchPublishedPages(),
+  ]);
 
   return (
-    <div className="relative min-h-screen bg-[var(--color-void)]">
+    <div className="void-embrace relative">
       {/* 静かなヘッダー（グラフの上に浮かべる） */}
-      <header className="absolute top-0 left-0 z-10 px-8 py-6 pointer-events-none">
+      <header className="hug-corner-tl z-10 pointer-events-none">
         <Link
           href="/"
           className="text-ghost text-xs tracking-[0.5em] font-light hover:text-ink transition-colors pointer-events-auto"
         >
           空白地帯
-        </Link>
-        <p className="text-ink text-sm font-light tracking-wide mt-3">変容の履歴</p>
+        </Link><span className="text-ghost text-xs tracking-[0.5em] font-light"> | 変容の履歴</span>
         {graph.versions.length === 0 && (
-          <p className="text-ghost text-xs mt-4">まだ記録された変容はありません。</p>
+          <p className="text-ghost text-[10px] mt-3 pointer-events-none">まだ記録された変容はありません。</p>
         )}
       </header>
 
@@ -40,6 +45,10 @@ export default async function HistoryPage() {
       <div className="absolute inset-0">
         <HistoryView data={graph} />
       </div>
+
+      {/* ナビゲーション — 他ページと同じ左下隅 */}
+      <DesktopNav variant="corner" pages={pages} />
+      <MobileMenu socialLinks={socialLinks} pages={pages} />
     </div>
   );
 }

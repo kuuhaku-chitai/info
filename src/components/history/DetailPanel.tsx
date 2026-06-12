@@ -24,38 +24,55 @@ export function DetailPanel() {
 
   const isOpen = selectedId !== null;
 
+  // パネルを閉じる & URLハッシュをクリア（/history#id で開いた場合にURLを戻す）
+  function handleClose() {
+    closeDetail();
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', '/history');
+    }
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* 背景の薄い覆い（クリックで閉じる）。空白を消さないよう、ごく淡く */}
+          {/* 背景の薄い覆い（クリックで閉じる） */}
           <motion.div
-            className="absolute inset-0 bg-[var(--color-void)]/40"
+            className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            onClick={closeDetail}
+            onClick={handleClose}
           />
 
-          {/* パネル本体 */}
+          {/* × ボタン — ハンバーガーと同じ fixed top-6 right-6 z-60 p-2
+              パネルより上に浮かせることでナビ等との重なりを排除 */}
+          <motion.button
+            onClick={handleClose}
+            className="fixed top-6 right-6 z-60 p-2 text-ghost bg-white hover:text-ink transition-colors focus:outline-none"
+            aria-label="閉じる"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="w-6 h-6 flex flex-col justify-center items-center gap-0">
+              <span className="block h-px w-6 bg-current rotate-45 translate-y-px" />
+              <span className="block h-px w-6 bg-current -rotate-45 -translate-y-px" />
+            </div>
+          </motion.button>
+
+          {/* パネル本体 — z-50 で全要素の最上位に */}
           <motion.aside
-            className="absolute top-0 right-0 h-full w-full max-w-md bg-[var(--color-void)] border-l border-edge overflow-y-auto"
+            className="absolute top-0 right-0 h-full w-full max-w-md bg-white border-l border-edge overflow-y-auto z-50"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 24 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="px-8 py-10">
-              {/* 閉じる */}
-              <button
-                onClick={closeDetail}
-                className="text-xs text-ghost hover:text-ink transition-colors mb-8"
-                aria-label="閉じる"
-              >
-                ✕ 閉じる
-              </button>
-
+            {/* パネル上部の余白（fixed ×ボタンと被らないよう確保） */}
+            <div className="px-8 pt-16 pb-8">
               {loadingDetail && !detail ? (
                 <p className="text-xs text-ghost py-8">読み込み中...</p>
               ) : detail ? (
