@@ -7,6 +7,12 @@
 4. 機能追加時は必ず「Discord通知トリガー」を検討（延命・新規イベント時）。
 5. 実装は段階的。1回のレスポンスで完結させず、ユーザーが次の指示を出せる形に。
 
+## Core Concept（新機能の指針）
+The music **is the audible memory of the space** ("空白地帯").  
+Historyページの変容（編集・追加・削除・時系列・タグなど）を「空間の記憶」として音に翻訳する。  
+**History Mode** では、Lyria RealTimeをsteerし、音楽が徐々に変化する。  
+ビジュアライザーも空間の揺らぎを微弱に表現。
+
 ## メモリリーク防止の一般ルール
 - 外側のスコープが重い（Reactコンポーネント、Nodeハンドラなど）と思ったら即アロー禁止
 - コールバックをインラインで書かず、名前付き関数 or .bind で外に出す
@@ -19,6 +25,54 @@
 - Tiptap + react-markdownによるMarkdownエディタ ★★★★☆
 - Server Actions + Discord Webhook ★★★★☆
 - 非対称グリッド + 台形マスクレイアウト ★★★★★
+- Historyデータ → Memory/State変換 + Lyria steer ★★★★★
+- Canvasビジュアライザーと有機的パーティクル（History変化連動） ★★★★★
+
+## 新機能：History Mode 設計原則
+- 既存プレイヤーページに最小侵襲で追加（トグルボタン）。
+- ボタン押下 → https://kuuhaku-chitai.net/history 取得 → Memory Engine処理 → Music State更新 → Lyria weighted promptsでsteer。
+- 音楽は**途切れず継続**（restart禁止）。
+- ビジュアライザーはHistory変化を微弱に反映（密度・明るさ・パーティクルなど）。
+- Memory Engine：History全件ではなく「Current Space State + Trend（変化量）」を優先（コスト・連続性重視）。
+
+## Stem-based Continuous Ensemble（新機能指針）
+- Lyria RealTimeで生成した音声を **stems（ドラム、ベース、メロディ、雰囲気など）に分解**。
+- 分解後は **AIを使わず**（Web Audio API + ルールベース）でトラックを重ね、再構築。
+- これにより1回のLyria生成で長時間「常に新しいアンサンブル」を実現。
+- 更新トリガー：
+  - 自動：時間帯（朝・昼・晩） or Cron
+  - 手動：管理画面の「Rebuild Ensemble」ボタン（現在のHistoryデータで再構築）
+- Historyデータ変更を検知して微弱に変化させる（編集頻度・最新項目でweight調整）。
+
+## Cost + Continuity Strategy
+- Lyria呼び出し：1日最大3回（ベース生成）
+- その後は Stem Layering + 時間帯/History delta で進化
+- R2にstems保存 → ブラウザで動的ミックス
+
+## Update Mode Control（手動・自動切り替え）
+- 管理画面で **Auto / Manual** モードを切り替え可能。
+- **Auto Mode**: 時間帯（朝・昼・晩）やCronで自動更新（Historyデータ取得 → Memory State更新 → Ensemble再構築）。
+- **Manual Mode**: 自動更新を完全に停止。「Rebuild Ensemble」ボタン押下時のみHistoryデータで再構築。
+- モード状態は KV / D1 で永続化し、全セッション（プレイヤー側）に反映。
+- モード切り替え時はDiscord通知（任意）。
+
+## API Key Management（GEMINI_API_KEY）
+
+### 開発環境
+- `.env.local` に `GEMINI_API_KEY=xxxxxxxx` を設定
+- `.gitignore` に `.env*.local` を追加してGitにコミットしない
+
+### 本番環境（Cloudflare Workers）
+- `wrangler secret put GEMINI_API_KEY` で秘密情報として登録
+- コード内では `env.GEMINI_API_KEY` または `process.env.GEMINI_API_KEY` で参照
+- 絶対にクライアントサイド（NEXT_PUBLIC_）に公開しない
+
+### コード内での安全な参照例
+```ts
+const apiKey = process.env.GEMINI_API_KEY || env?.GEMINI_API_KEY;
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY が設定されていません");
+}
 
 ## 禁止事項
 - グリッドベースの均等ポートフォリオレイアウト

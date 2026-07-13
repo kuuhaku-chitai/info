@@ -78,6 +78,45 @@ Cloudflare Workersへのデプロイ：
 pnpm run deploy
 ```
 
+## music Mode（空間の記憶を聴く）
+
+/history の変容を Lyria RealTime で音に翻訳し、4つの擬似stemをWeb Audio APIで
+重ね直して「常に新しいアンサンブル」を鳴らす機能。詳細は [plan.md](plan.md) を参照。
+
+### 必要なシークレット
+
+| キー | 開発（.env.local） | 本番（wrangler secret put） | 用途 |
+|---|---|---|---|
+| `GEMINI_API_KEY` | 必須 | 必須 | Lyria RealTime接続（サーバのみ。クライアントへは渡らない） |
+| `CRON_SECRET` | 任意 | Autoモード運用時に必須 | Cron→/api/music/rebuild の内部認証。未設定なら自動採取は完全休止 |
+| `DISCORD_WEBHOOK_URL` | 任意 | 任意 | 生成・モード切替の通知 |
+
+```bash
+wrangler secret put GEMINI_API_KEY
+wrangler secret put CRON_SECRET   # 例: openssl rand -hex 32
+```
+
+### 本番D1へのマイグレーション
+
+```bash
+wrangler d1 execute kuuhaku-chitai-db --remote --file=migrations/0010_add_music.sql
+```
+
+### 自動採取（Cron）の仕組み
+
+- `wrangler.toml` の `[triggers] crons = ["0 * * * *"]` で毎時起床
+- `worker/index.ts`（カスタムエントリ）が in-process で
+  `POST /api/music/rebuild` を Bearer CRON_SECRET 付きで呼ぶ
+- サーバ側ガードが「予定時刻（管理画面の朝・昼・晩、時単位）／Autoモード／
+  1日3回上限／二重生成ロック」をすべて判定。既定はManualモード＝何も起きない
+- preview環境はcrons無効（Lyriaコストは本番のみ）
+
+### 使い方
+
+1. 管理画面「音楽」でモード・テンプレート・スケジュールを管理
+2. 「Rebuild Ensemble」で手動採取（Manualモードでも可・1日3回まで）
+3. /history 右上の「音」で再生・停止
+
 ## コンセプト
 
 「空白地帯」は時間の消滅を可視化するプロジェクトです。詳細は [CLAUDE.md](CLAUDE.md) を参照してください。

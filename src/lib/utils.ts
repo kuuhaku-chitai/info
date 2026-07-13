@@ -1,5 +1,26 @@
 
 /**
+ * スライド分割の区切り記法。
+ * マークダウン中で単独行に `/--/` を書くと、その位置でページが分割される。
+ * 「縦に積む」のではなく「横に移す」ことで、コンセプトの"余白を渡り歩く"体験を作る。
+ */
+export const SLIDE_DELIMITER = /^[ \t]*\/--\/[ \t]*$/m;
+
+/**
+ * マークダウンを `/--/` 区切りでスライド単位に分割する。
+ * 区切りが無い（＝従来のページ）場合は要素1つの配列を返すので、表示側は後方互換を保てる。
+ * 空のスライド（連続区切り・先頭末尾の区切り）は除去する。
+ */
+export function splitSlides(markdown: string): string[] {
+    const slides = markdown
+        .split(SLIDE_DELIMITER)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    // すべて空だった場合でも、元のテキストをそのまま1枚として返す
+    return slides.length > 0 ? slides : [markdown];
+}
+
+/**
  * 画像URLを最適化する
  * ローカル開発環境での絶対パス（localhost:9000）をプロキシパス（/images）に置換
  * これにより、モバイル端末などからアクセスした場合でも画像が表示されるようになる

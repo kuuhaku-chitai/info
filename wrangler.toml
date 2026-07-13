@@ -8,8 +8,19 @@ name = "kuuhaku-chitai"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
-# opennextjs-cloudflare のビルド出力
-main = ".open-next/worker.js"
+# カスタムエントリ：OpenNextのビルド出力(.open-next/worker.js)を包み、
+# Cron Trigger用のscheduledハンドラを追加する（HTTPは素通し）
+main = "worker/index.ts"
+
+# ============================================
+# Cron Trigger（music Mode 自動採取）
+# 毎時0分に目を覚まし、guard.ts側で「予定時刻（朝・昼・晩）の時か／
+# Autoモードか／1日3回以内か」を判定する。
+# 固定Cronのまま管理画面のスケジュール変更が反映される仕組み。
+# CRON_SECRET（wrangler secret）未設定なら何もしない。
+# ============================================
+[triggers]
+crons = ["0 * * * *"]
 
 [assets]
 directory = ".open-next/assets"
@@ -58,6 +69,10 @@ head_sampling_rate = 1
 
 [env.preview]
 name = "kuuhaku-chitai-preview"
+
+# preview環境では自動採取を行わない（Lyriaコストは本番の1日3回だけに閉じる）
+[env.preview.triggers]
+crons = []
 
 [[env.preview.d1_databases]]
 binding = "DB"

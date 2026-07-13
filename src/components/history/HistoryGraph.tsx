@@ -53,7 +53,9 @@ export function HistoryGraph({ data }: HistoryGraphProps) {
   };
 
   return (
-    <div className="absolute inset-0">
+    // history-breath: music Mode再生中のみ、音のエネルギーで全体が微かに呼吸する
+    // （--music-energy はuseEnsembleが書き込むCSS変数。音が止まれば完全に静止）
+    <div className="absolute inset-0 history-breath">
       <ReactFlow
         nodes={nodes}
         edges={edges}

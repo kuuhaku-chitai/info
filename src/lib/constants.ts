@@ -134,4 +134,6 @@ export const DISCORD_COLORS = {
   critical: 0x8B0000,
   /** 問い合わせ - 外部からの接触（灰青色） */
   inquiry: 0x6B8E9B,
+  /** 音楽 - 空間の記憶の採取（苔色の灰緑） */
+  music: 0x5B6B63,
 } as const;

@@ -243,6 +243,21 @@ strong {
   animation: pulse-whisper 4s var(--easing-organic) infinite;
 }
 
+/* ============================================
+   music Mode - 空間の呼吸（ビジュアライザー連動）
+
+   useEnsembleが --music-energy (0..1) を書き込み、
+   グラフ全体の不透明度が ±6% だけ揺れる。
+   Reactの再レンダーを起こさないCSS変数経由の連動で、
+   「音が空間を照らす」のではなく「空間が微かに呼吸する」に留める。
+   音が止まれば変数は0に戻り、完全に静止した元の姿へ。
+   ============================================ */
+
+.history-breath {
+  opacity: calc(0.94 + var(--music-energy, 0) * 0.06);
+  transition: opacity 1.6s var(--easing-organic);
+}
+
 /* 徐々に現れるテキスト */
 @keyframes fade-in-slow {
   from {

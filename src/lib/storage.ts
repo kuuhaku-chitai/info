@@ -312,3 +312,35 @@ export async function imageExists(
     return false;
   }
 }
+
+// ============================================
+// 汎用オブジェクト操作（Music Mode: stems音声など画像以外の保存に使う）
+// 既存のR2/S3内部実装を再利用し、環境分岐のコードを増やさない
+// ============================================
+
+/**
+ * 任意キーの公開URLを取得
+ */
+export function getObjectUrl(key: string): string {
+  const publicUrl = isProduction
+    ? (process.env.R2_PUBLIC_URL || '')
+    : (process.env.S3_PUBLIC_URL || '/images');
+  return publicUrl ? `${publicUrl}/${key}` : `/${key}`;
+}
+
+/**
+ * 任意キーでオブジェクトをアップロード
+ * stemsは世代ごとに一意なキーを使うため、長期キャッシュ（既存実装の1年）で問題ない
+ */
+export async function uploadObject(
+  key: string,
+  body: Uint8Array,
+  mimeType: string
+): Promise<{ url: string; key: string }> {
+  if (isProduction) {
+    await uploadImageR2(key, body, mimeType);
+  } else {
+    await uploadImageS3(key, body, mimeType);
+  }
+  return { url: getObjectUrl(key), key };
+}

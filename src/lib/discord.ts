@@ -230,3 +230,26 @@ export async function notifyNewInquiry(
     },
   });
 }
+
+/**
+ * Music Mode（空間の記憶の採取）の出来事を通知する。
+ * 生成の成功・失敗・上限到達・モード切替——音楽の生死に関わる変化を
+ * コミュニティへ静かに伝える（CLAUDE.md「Discord通知トリガーの検討」準拠）。
+ *
+ * @param title   出来事の短い見出し（例: "アンサンブル再構築"）
+ * @param detail  補足（例: トリガー種別・失敗理由）
+ */
+export async function notifyMusicEvent(
+  title: string,
+  detail: string
+): Promise<boolean> {
+  return sendDiscordNotification({
+    type: 'music',
+    message: '⟡ 空間の記憶',
+    embed: {
+      title,
+      description: detail,
+      color: DISCORD_COLORS.music,
+    },
+  });
+}

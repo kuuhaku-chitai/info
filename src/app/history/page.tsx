@@ -9,6 +9,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchVersionGraph, fetchAllSocialLinks, fetchPublishedPages } from '@/lib/actions';
 import { HistoryView } from '@/components/history/HistoryView';
+import { MusicModeToggle } from '@/components/music/MusicModeToggle';
 import { DesktopNav } from '@/components/ui/DesktopNav';
 import { MobileMenu } from '@/components/ui/MobileMenu';
 
@@ -40,6 +41,9 @@ export default async function HistoryPage() {
           <p className="text-ghost text-[10px] mt-3 pointer-events-none">まだ記録された変容はありません。</p>
         )}
       </header>
+
+      {/* music Mode — 「音」一文字が右上に佇む（空間の記憶を聴く） */}
+      <MusicModeToggle />
 
       {/* グラフ本体（全画面。クライアント専用で遅延ロード） */}
       <div className="absolute inset-0">

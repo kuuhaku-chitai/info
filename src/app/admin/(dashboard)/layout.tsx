@@ -81,6 +81,14 @@ export default async function DashboardLayout({
                 </li>
                 <li>
                   <Link
+                    href="/music"
+                    className="hover:text-ink transition-colors"
+                  >
+                    音楽
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/donations"
                     className="hover:text-ink transition-colors"
                   >

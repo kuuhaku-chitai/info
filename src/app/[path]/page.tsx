@@ -92,7 +92,7 @@ export default async function StaticPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* 本文 */}
+        {/* 本文: MarkdownRenderer 内部で `/--/` 区切りを判定し、スライド/縦表示を自動切替 */}
         <MarkdownRenderer content={page.markdown} />
       </article>
 

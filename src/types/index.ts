@@ -5,6 +5,10 @@
  * 「未完」を表現するため、すべてのデータは「いつか消える」前提で設計されている。
  */
 
+// Music Mode（空間の記憶を聴く）の型は別ファイルに分離しつつ、
+// 既存の `@/types` 一括importの流儀を壊さないよう再エクスポートする。
+export * from './music';
+
 // ============================================
 // 認証
 // ============================================
@@ -164,7 +168,7 @@ export interface SocialLink {
  * - milestone: マイルストーン通知（残り100日など）
  * - critical: 緊急通知（残り30日以下など）
  */
-export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical' | 'inquiry';
+export type NotificationType = 'lifespan' | 'event' | 'milestone' | 'critical' | 'inquiry' | 'music';
 
 /**
  * Discord Webhook ペイロード
