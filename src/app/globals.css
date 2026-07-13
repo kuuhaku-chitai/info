@@ -334,6 +334,17 @@ strong {
   right: var(--space-lg);
 }
 
+/* music Mode トグルの定位置：React Flowのズームコントロール
+   （右下, margin 15px, 26px角ボタン×3段=78px）のすぐ上。
+   コントロールの内部寸法が変わっても衝突しないよう余裕を持たせる。 */
+.music-toggle-corner {
+  position: absolute;
+  bottom: 112px;
+  right: 15px;
+  width: 28px;
+  height: 28px;
+}
+
 /* ============================================
    Critical State (危機状態)
 

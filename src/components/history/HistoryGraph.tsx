@@ -53,28 +53,34 @@ export function HistoryGraph({ data }: HistoryGraphProps) {
   };
 
   return (
-    // history-breath: music Mode再生中のみ、音のエネルギーで全体が微かに呼吸する
-    // （--music-energy はuseEnsembleが書き込むCSS変数。音が止まれば完全に静止）
-    <div className="absolute inset-0 history-breath">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable
-        fitView
-        fitViewOptions={{ padding: 0.3 }}
-        minZoom={0.2}
-        maxZoom={1.5}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background color="var(--color-edge)" gap={32} size={1} />
-        <Controls showInteractive={false} position="bottom-right" />
-      </ReactFlow>
+    <div className="absolute inset-0">
+      {/* history-breath: music Mode再生中のみ、音のエネルギーでグラフが微かに呼吸する
+          （--music-energy はuseEnsembleが書き込むCSS変数。音が止まれば完全に静止）。
+          opacity<1 はCSS上「新しいスタッキングコンテキスト」を生むため、
+          fixed位置のDetailPanel閉じるボタン（z-60、ハンバーガーz-50より上に出す前提）を
+          このスコープの外に置く——内側に置くとz-60がこの中に閉じ込められ、
+          外側のハンバーガーと正しく比較されなくなる（実際に起きていた不具合）。 */}
+      <div className="absolute inset-0 history-breath">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable
+          fitView
+          fitViewOptions={{ padding: 0.3 }}
+          minZoom={0.2}
+          maxZoom={1.5}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background color="var(--color-edge)" gap={32} size={1} />
+          <Controls showInteractive={false} position="bottom-right" />
+        </ReactFlow>
+      </div>
 
       <DetailPanel />
     </div>

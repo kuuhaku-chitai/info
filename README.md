@@ -81,7 +81,9 @@ pnpm run deploy
 ## music Mode（空間の記憶を聴く）
 
 /history の変容を Lyria RealTime で音に翻訳し、4つの擬似stemをWeb Audio APIで
-重ね直して「常に新しいアンサンブル」を鳴らす機能。詳細は [plan.md](plan.md) を参照。
+重ね直して「常に新しいアンサンブル」を鳴らす機能。
+詳細な技術仕様は [docs/music-mode-spec.md](docs/music-mode-spec.md) を参照
+（当初の実装計画は [plan.md](plan.md)）。
 
 ### 必要なシークレット
 
