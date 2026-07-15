@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StemManifest } from '@/types';
 import { EnsembleEngine } from './ensembleEngine';
+import type { PerformanceIntent } from './ensembleRules';
 
 export type EnsembleStatus =
   /** 静止（初期状態） */
@@ -48,9 +49,16 @@ function writeEnergyVar(value: number): void {
   document.documentElement.style.setProperty('--music-energy', value.toFixed(3));
 }
 
-export function useEnsemble(): { status: EnsembleStatus; toggle: () => void } {
+export function useEnsemble(): {
+  status: EnsembleStatus;
+  toggle: () => void;
+  /** 聴き手の演奏意図を空間へ渡す（nullで手放す＝空間の記憶のままへ戻る） */
+  setIntent: (intent: PerformanceIntent | null) => void;
+} {
   const [status, setStatus] = useState<EnsembleStatus>('idle');
   const engineRef = useRef<EnsembleEngine | null>(null);
+  /** 再生前にスライダーが動いた場合も、開始時にその意図から鳴り始めるよう保持 */
+  const intentRef = useRef<PerformanceIntent | null>(null);
   const generatedAtRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const energyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -101,6 +109,8 @@ export function useEnsemble(): { status: EnsembleStatus; toggle: () => void } {
         }
 
         try {
+          // 再生前に置かれていた意図があれば、その傾きから鳴り始める
+          engine.setIntent(intentRef.current);
           await engine.start(manifest);
         } catch {
           engineRef.current = null;
@@ -133,10 +143,18 @@ export function useEnsemble(): { status: EnsembleStatus; toggle: () => void } {
     [teardown],
   );
 
+  /** スライダー等の意図を保持し、再生中ならエンジンへ即（4秒ランプで）伝える */
+  const setIntent = useCallback(function setEnsembleIntent(
+    intent: PerformanceIntent | null,
+  ) {
+    intentRef.current = intent;
+    engineRef.current?.setIntent(intent);
+  }, []);
+
   // ページを離れる時は必ず沈黙する（リーク防止：AudioContext・タイマーを残さない）
   useEffect(function bindUnmountCleanup() {
     return teardown;
   }, [teardown]);
 
-  return { status, toggle };
+  return { status, toggle, setIntent };
 }

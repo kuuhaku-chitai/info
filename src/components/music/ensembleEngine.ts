@@ -21,7 +21,19 @@
  */
 
 import type { MusicState, StemManifest } from '@/types';
-import { buildMixPlan, BREATH_CYCLE_SEC, type MixPlan } from './ensembleRules';
+import {
+  buildMixPlan,
+  BREATH_CYCLE_SEC,
+  type MixPlan,
+  type PerformanceIntent,
+} from './ensembleRules';
+
+/**
+ * 聴き手がスライダーを動かした時のランプ秒数。
+ * 通常の呼吸（10-16秒）より速く応答するが、それでも4秒——
+ * 楽器のような即時性ではなく、空間が聴き手に「ゆっくり応える」速さ。
+ */
+const INTENT_RAMP_SEC = 4;
 
 /** 1 stem分の再生ノード束 */
 interface StemVoice {
@@ -43,6 +55,10 @@ export class EnsembleEngine {
   private voices: StemVoice[] = [];
   private cycleTimer: ReturnType<typeof setInterval> | null = null;
   private cycleIndex = 0;
+  /** 現在鳴っている計画の周期番号（intent変更時に同じ計画を傾け直すため） */
+  private lastPlanIndex = 0;
+  /** 聴き手の演奏意図。nullなら空間の記憶のまま */
+  private intent: PerformanceIntent | null = null;
   private musicState: MusicState | null = null;
   private currentMasterTarget = 0;
   /** エネルギー読み取り用の再利用バッファ（毎フレームの確保を避ける） */
@@ -231,13 +247,36 @@ export class EnsembleEngine {
   }
 
   private nextPlan(): MixPlan {
+    this.lastPlanIndex = this.cycleIndex;
     const plan = buildMixPlan(
       this.musicState,
       new Date().getHours(),
       this.cycleIndex,
+      this.intent,
     );
     this.cycleIndex += 1;
     return plan;
+  }
+
+  /**
+   * 聴き手の演奏意図を更新する。
+   *
+   * 再生中なら「いま鳴っている周期の計画」を同じ乱数種で立て直し、
+   * 新しい傾きだけを4秒ランプで反映する——スライダーに空間が
+   * ゆっくり応える。silenceBurstは再スケジュールしない
+   * （同じ周期で欠落の一瞬が二重に予約されるのを防ぐ）。
+   * 次の呼吸周期からは通常の流れ（nextPlan）が意図を引き継ぐ。
+   */
+  setIntent(intent: PerformanceIntent | null): void {
+    this.intent = intent;
+    if (!this.ctx) return;
+    const replan = buildMixPlan(
+      this.musicState,
+      new Date().getHours(),
+      this.lastPlanIndex,
+      intent,
+    );
+    this.applyPlan({ ...replan, silenceBurst: null, rampSec: INTENT_RAMP_SEC });
   }
 
   /** 計画を音声グラフへ反映する。すべて指数ランプ＝急な変化は存在しない */

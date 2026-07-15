@@ -345,6 +345,70 @@ strong {
   height: 28px;
 }
 
+/* 演奏パネルの定位置：音符トグルのすぐ上に浮かぶ。
+   モバイルでも画面からはみ出さないよう幅を制限する。 */
+.music-panel-corner {
+  position: absolute;
+  bottom: 150px;
+  right: 15px;
+  max-width: calc(100vw - 30px);
+}
+
+/* ============================================
+   void-slider - 空白地帯のスライダー
+
+   1pxの線と小さな点だけ。メーターにも楽器にも見せない。
+   触れると点がわずかに濃くなる——それ以上は語らない。
+   ============================================ */
+
+.void-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.void-slider::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--color-edge);
+}
+
+.void-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 9px;
+  height: 9px;
+  margin-top: -4px;
+  border-radius: 9999px;
+  background: var(--color-void);
+  border: 1px solid var(--color-ghost);
+  transition: border-color 0.7s var(--easing-organic);
+}
+
+.void-slider:hover::-webkit-slider-thumb {
+  border-color: var(--color-ink);
+}
+
+.void-slider::-moz-range-track {
+  height: 1px;
+  background: var(--color-edge);
+}
+
+.void-slider::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--color-void);
+  border: 1px solid var(--color-ghost);
+  transition: border-color 0.7s var(--easing-organic);
+}
+
+.void-slider:hover::-moz-range-thumb {
+  border-color: var(--color-ink);
+}
+
 /* ============================================
    Critical State (危機状態)
 

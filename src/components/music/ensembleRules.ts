@@ -122,6 +122,62 @@ function timeOfDayMasterMultiplier(hour: number): number {
 }
 
 // ============================================
+// 演奏の意図（Performance Intent）
+// ============================================
+
+/**
+ * 聴き手が空間の音に与える「傾き」。
+ *
+ * 参照したPromptDJ的なUIの思想（スライダーで音楽をsteerする）を
+ * 空白地帯の語彙に翻訳したもの：
+ * - Temperature / Top K のような生成パラメータは晒さない。
+ *   聴き手が触れるのは「層の傾き」「間」「揺らぎ」——空間の言葉だけ。
+ * - すべて0-1、0.5が中立＝「空間の記憶のまま」。
+ *   聴き手はミックスを上書きするのではなく、傾けることしかできない。
+ *   絶対上限（master 0.5）はどう操作しても超えられない——
+ *   演奏しても空白は殺せない、という設計上の約束。
+ */
+export interface PerformanceIntent {
+  /** 各層の傾き（0=沈黙へ、0.5=記憶のまま、1=前へ） */
+  layers: Record<StemRole, number>;
+  /** 間（ま）：音の負の空間。高いほど休む層が増え、全体が沈む */
+  ma: number;
+  /** 揺らぎ：音量LFOの深さ。高いほど潮の満ち引きが大きくなる */
+  yuragi: number;
+}
+
+/** 中立の意図＝空間の記憶のまま（新規オブジェクトを返す：呼び出し側で安全に変更可能） */
+export function neutralIntent(): PerformanceIntent {
+  return {
+    layers: { rhythm: 0.5, bass: 0.5, melody: 0.5, atmosphere: 0.5 },
+    ma: 0.5,
+    yuragi: 0.5,
+  };
+}
+
+/** 層スライダー(0-1) → ゲイン倍率(0-2)。0.5で等倍 */
+function layerMultiplier(value: number): number {
+  return value * 2;
+}
+
+/** 間(0-1) → master倍率。0.5で等倍。深い間は全体を沈める */
+function maMasterMultiplier(ma: number): number {
+  return 1 - 0.6 * (ma - 0.5);
+}
+
+/** 間(0-1) → 休む層の増減。端に振った時だけ±1 */
+function maRestDelta(ma: number): number {
+  if (ma >= 0.75) return 1;
+  if (ma <= 0.25) return -1;
+  return 0;
+}
+
+/** 揺らぎ(0-1) → LFO深さ倍率(0.4-1.6)。0.5で等倍。ゼロにはしない（完全な静止は嘘になる） */
+function yuragiMultiplier(yuragi: number): number {
+  return 0.4 + 1.2 * yuragi;
+}
+
+// ============================================
 // ミックス計画の生成（このモジュールの中心）
 // ============================================
 
@@ -131,11 +187,13 @@ function timeOfDayMasterMultiplier(hour: number): number {
  * @param state      manifestに載っていたMusicState（無ければ完全な既定値で静かに鳴る）
  * @param hour       現地の時刻（0-23）。時間帯の光として使う
  * @param cycleIndex 呼吸周期の通し番号。乱数の種＝同じ番号なら同じ計画（テスト可能）
+ * @param intent     聴き手の演奏意図。nullなら空間の記憶のまま
  */
 export function buildMixPlan(
   state: MusicState | null,
   hour: number,
   cycleIndex: number,
+  intent: PerformanceIntent | null = null,
 ): MixPlan {
   const rng = mulberry32(cycleIndex + 1);
   const stillness = state?.stillness ?? 0.5;
@@ -143,8 +201,14 @@ export function buildMixPlan(
   const branchActivity = state?.branchActivity ?? 0;
 
   // --- 休むstemの選定：常に1つ、欠落や深い静けさの時は2つ ---
-  // 輪番（cycleIndex）で回すことで、長く聴いても同じ組み合わせが続かない
-  const restCount = absence > 0.3 || stillness > 0.6 ? 2 : 1;
+  // 輪番（cycleIndex）で回すことで、長く聴いても同じ組み合わせが続かない。
+  // 聴き手の「間」で±1するが、下限は1＝音の負の空間は必ず残る
+  // （演奏しても「常に1〜2 stemは休む」原則は破れない）
+  const baseRestCount = absence > 0.3 || stillness > 0.6 ? 2 : 1;
+  const restCount = Math.min(
+    RESTABLE_ROLES.length,
+    Math.max(1, baseRestCount + (intent ? maRestDelta(intent.ma) : 0)),
+  );
   const restStart = Math.floor(rng() * RESTABLE_ROLES.length);
   const restingRoles = new Set<StemRole>();
   for (let i = 0; i < restCount; i++) {
@@ -152,21 +216,32 @@ export function buildMixPlan(
   }
 
   // --- 役割ごとの目標ゲイン ---
+  const yuragiMul = intent ? yuragiMultiplier(intent.yuragi) : 1;
   const targets: StemMixTarget[] = (
     ['rhythm', 'bass', 'melody', 'atmosphere'] as StemRole[]
   ).map(function toTarget(role): StemMixTarget {
     const resting = restingRoles.has(role);
     // 分岐が活発なほどレイヤーがわずかに厚くなる（重なりの気配）
     const activityLift = 1 + 0.15 * branchActivity;
+    const layerMul = intent ? layerMultiplier(intent.layers[role]) : 1;
     const gain = resting
       ? 0
-      : clamp01(BASE_GAIN[role] * timeOfDayMultiplier(role, hour) * activityLift);
-    return { role, gain: round3(gain), resting, lfo: LFO[role] };
+      : clamp01(BASE_GAIN[role] * timeOfDayMultiplier(role, hour) * activityLift * layerMul);
+    const lfo: StemLfo = {
+      periodSec: LFO[role].periodSec,
+      depth: round3(LFO[role].depth * yuragiMul),
+    };
+    return { role, gain: round3(gain), resting, lfo };
   });
 
   // --- 全体音量：静けさで沈む。無音にはしない（空間が在る限り音は残る） ---
+  // 聴き手の「間」で傾くが、絶対上限0.5は超えられない（空白は殺せない）
+  const maMul = intent ? maMasterMultiplier(intent.ma) : 1;
   const masterGain = round3(
-    0.5 * (1 - 0.35 * stillness) * timeOfDayMasterMultiplier(hour),
+    Math.min(
+      0.5,
+      0.5 * (1 - 0.35 * stillness) * timeOfDayMasterMultiplier(hour) * maMul,
+    ),
   );
 
   // --- 欠落の一瞬：absenceに比例した確率で、周期のどこかで息を呑む ---
