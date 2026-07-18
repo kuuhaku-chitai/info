@@ -17,12 +17,30 @@ import {
   Controls,
   type NodeMouseHandler,
   type Node,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { type VersionGraphData } from '@/types';
+import { visualizerBus } from '@/components/music/visualizerBus';
 import { useHistoryStore, type VersionNodeData } from './historyStore';
 import { VersionNode } from './VersionNode';
 import { DetailPanel } from './DetailPanel';
+import { MemoryCanvas } from './MemoryCanvas';
+
+/** React Flowの視点をvisualizerBusへ（記憶の粒がズーム・パンに追従する唯一の経路） */
+function publishViewport(viewport: Viewport): void {
+  visualizerBus.viewport = { x: viewport.x, y: viewport.y, zoom: viewport.zoom };
+}
+
+/** onInit：fitView直後の初期視点をseedする（これが無いと初回描画がずれる） */
+function handleFlowInit(instance: { getViewport(): Viewport }): void {
+  publishViewport(instance.getViewport());
+}
+
+/** onMove：パン・ズーム中の視点を毎イベント発行（rAF側は読むだけ） */
+function handleFlowMove(_event: unknown, viewport: Viewport): void {
+  publishViewport(viewport);
+}
 
 const nodeTypes = { version: VersionNode };
 
@@ -53,7 +71,12 @@ export function HistoryGraph({ data }: HistoryGraphProps) {
   };
 
   return (
-    <div className="absolute inset-0">
+    // overflow-hidden：絶対配置の子（Canvas等）が何をしても
+    // ページのスクロールバーを生まないための防御壁
+    <div className="absolute inset-0 overflow-hidden">
+      {/* 記憶の粒：ReactFlowの下層。再生中だけ、world座標で粒が漂う */}
+      <MemoryCanvas />
+
       {/* history-breath: music Mode再生中のみ、音のエネルギーでグラフが微かに呼吸する
           （--music-energy はuseEnsembleが書き込むCSS変数。音が止まれば完全に静止）。
           opacity<1 はCSS上「新しいスタッキングコンテキスト」を生むため、
@@ -68,6 +91,8 @@ export function HistoryGraph({ data }: HistoryGraphProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
+          onInit={handleFlowInit}
+          onMove={handleFlowMove}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable

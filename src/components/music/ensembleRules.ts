@@ -235,12 +235,16 @@ export function buildMixPlan(
   });
 
   // --- 全体音量：静けさで沈む。無音にはしない（空間が在る限り音は残る） ---
-  // 聴き手の「間」で傾くが、絶対上限0.5は超えられない（空白は殺せない）
+  // 強調項（Step 4）：空間が活発（trend×density）な時だけ明確に持ち上がる。
+  // 聴き手の「間」で傾き、どの組み合わせでも絶対上限0.5は超えられない（空白は殺せない）
   const maMul = intent ? maMasterMultiplier(intent.ma) : 1;
+  const density = state?.density ?? 0.3;
+  const trend = state?.trend ?? 0;
+  const emphasis = 1 + 0.25 * trend * density;
   const masterGain = round3(
     Math.min(
       0.5,
-      0.5 * (1 - 0.35 * stillness) * timeOfDayMasterMultiplier(hour) * maMul,
+      0.5 * (1 - 0.35 * stillness) * timeOfDayMasterMultiplier(hour) * maMul * emphasis,
     ),
   );
 
@@ -260,6 +264,64 @@ export function buildMixPlan(
     // ランプは10〜16秒：変化は気づいた時にはもう終わっている速さで
     rampSec: round3(10 + rng() * 6),
   };
+}
+
+/**
+ * 記憶（echo）が滲み出る時の目標ゲイン。
+ * 現在の同役割の基礎ゲイン × 風化倍率 × 聴き手の層の傾き × ブースト。
+ * 風化倍率は最大0.5なので、記憶は通常は現在の半分より前に出られない。
+ * boost（大変容の出来事・×1.5・1呼吸周期のみ）が乗っても実効は最大0.75倍
+ * ——出来事の間でさえ、記憶が現在の基礎値を超えることはない。
+ */
+export function echoSurfaceGain(
+  role: StemRole,
+  weatheringGainMul: number,
+  intent: PerformanceIntent | null,
+  boost = 1,
+): number {
+  const layerMul = intent ? layerMultiplier(intent.layers[role]) : 1;
+  // ブースト込みでも風化倍率の実効は1未満に留める（現在の基礎値が常に天井）
+  const effectiveWeathering = Math.min(1, weatheringGainMul * boost);
+  return round3(clamp01(BASE_GAIN[role] * effectiveWeathering * layerMul));
+}
+
+/**
+ * 全体lowpassのカットオフ（Hz）。
+ * 普段は20kHz＝完全に素通し。stillness（静けさ）とabsence（欠落）が深いほど
+ * 音がこもる——遠い部屋から聞こえる記憶のように。下限3kHz。
+ * 対数補間：耳の感覚に沿って滑らかに沈む。
+ */
+export function masterLowpassHz(state: MusicState | null): number {
+  const stillness = state?.stillness ?? 0.5;
+  const absence = state?.absence ?? 0;
+  const depth = clamp01(0.7 * stillness + 0.5 * absence);
+  // 20000 × (3000/20000)^depth : depth 0→20000Hz, 1→3000Hz
+  return Math.round(20000 * Math.pow(3000 / 20000, depth));
+}
+
+/**
+ * 大きなHistory変容の判定（filter sweep＋echo boostのトリガー）。
+ * 前回採取時とのtrend/absenceの変化量の合計が閾値を超えた時だけ「出来事」になる。
+ * 初回（prevなし）は変容ではない——比較する記憶が無ければ、驚きも無い。
+ */
+export function isMajorTransformation(
+  previous: MusicState | null,
+  next: MusicState | null,
+): boolean {
+  if (!previous || !next) return false;
+  const delta =
+    Math.abs(next.trend - previous.trend) + Math.abs(next.absence - previous.absence);
+  return delta >= 0.4;
+}
+
+/**
+ * 「間」→ 記憶の滲出確率への倍率。
+ * 間はすべての音に対する負の空間——深めれば記憶も浮かびにくくなり、
+ * 浅めればわずかに浮かびやすくなる（0.5で等倍、上限は呼び出し側でclamp）。
+ */
+export function echoProbabilityMultiplier(intent: PerformanceIntent | null): number {
+  if (!intent) return 1;
+  return round3(Math.max(0, 1 - 0.8 * (intent.ma - 0.5)));
 }
 
 function clamp01(value: number): number {

@@ -344,3 +344,15 @@ export async function uploadObject(
   }
   return { url: getObjectUrl(key), key };
 }
+
+/**
+ * 任意キーのオブジェクトを削除（音楽stemsの保持方針＝古い世代の風化に使う）
+ * R2/S3とも存在しないキーの削除は成功扱い（冪等）
+ */
+export async function deleteObject(key: string): Promise<void> {
+  if (isProduction) {
+    await deleteImageR2(key);
+  } else {
+    await deleteImageS3(key);
+  }
+}

@@ -20,6 +20,7 @@ import type {
   MusicState,
   MusicWeightedPrompt,
   MusicStem,
+  GenerationStems,
   StemRole,
 } from '@/types';
 
@@ -317,4 +318,95 @@ export async function getCurrentStems(): Promise<MusicStem[]> {
        WHEN 'rhythm' THEN 0 WHEN 'bass' THEN 1 WHEN 'melody' THEN 2 ELSE 3 END`,
   );
   return rows.map(rowToStem);
+}
+
+/**
+ * 保持方針（案A）：保持上限を超えた古い成功世代を返す。
+ * 新しい順でkeep件をスキップした残り＝風化して消える候補。
+ * 各世代のR2キーも添えて返す（呼び出し側がR2削除→D1削除の順で処理する）。
+ */
+export async function getPrunableGenerations(
+  keep: number,
+): Promise<Array<{ id: string; r2Keys: string[] }>> {
+  const rows = await query<DbRow>(
+    `SELECT id FROM music_generation_log
+     WHERE status = 'success' ORDER BY created_at DESC LIMIT 100000 OFFSET ?`,
+    [keep],
+  );
+  if (rows.length === 0) return [];
+
+  const ids = rows.map(function pickId(r) { return r.id as string; });
+  const placeholders = ids.map(function toPlaceholder() { return '?'; }).join(', ');
+  const stemRows = await query<DbRow>(
+    `SELECT generation_id, r2_key FROM music_stems WHERE generation_id IN (${placeholders})`,
+    ids,
+  );
+  const keysByGeneration = new Map<string, string[]>();
+  for (const row of stemRows) {
+    const gid = row.generation_id as string;
+    const bucket = keysByGeneration.get(gid);
+    if (bucket) bucket.push(row.r2_key as string);
+    else keysByGeneration.set(gid, [row.r2_key as string]);
+  }
+  return ids.map(function toPrunable(gid) {
+    return { id: gid, r2Keys: keysByGeneration.get(gid) ?? [] };
+  });
+}
+
+/**
+ * 1世代分のD1行を削除する（stems → ログの順。
+ * 外部キーのCASCADEはローカルSQLiteでは有効化されていないため明示的に消す）。
+ * R2オブジェクトの削除が済んだ世代にだけ呼ぶこと。
+ */
+export async function deleteGenerationRows(generationId: string): Promise<void> {
+  await execute('DELETE FROM music_stems WHERE generation_id = ?', [generationId]);
+  await execute('DELETE FROM music_generation_log WHERE id = ?', [generationId]);
+}
+
+/**
+ * 記憶の地層：直近N世代のstems一式（新しい順、現行世代を含む）。
+ *
+ * 「記憶の地層」計画の§2.1。過去世代はis_current=0になっても
+ * D1とR2に残っている——それをmanifest経由でクライアントに開示し、
+ * 章（Chapter）が風化・時刻の共鳴で選べるようにする。
+ *
+ * 2クエリで取得しアプリ側で束ねる（JOINで行が世代×stemに膨れるのを避け、
+ * D1 REST往復も定数に保つ）。
+ */
+export async function getRecentGenerationsWithStems(
+  limit = 8,
+): Promise<GenerationStems[]> {
+  const generations = await query<DbRow>(
+    `SELECT id, created_at FROM music_generation_log
+     WHERE status = 'success' ORDER BY created_at DESC LIMIT ?`,
+    [limit],
+  );
+  if (generations.length === 0) return [];
+
+  // IN句のプレースホルダは匿名?を世代数ぶん並べる
+  // （番号付き?Nはbetter-sqlite3が配列バインドで受け付けない：§9.4の教訓）
+  const ids = generations.map(function pickId(g) { return g.id as string; });
+  const placeholders = ids.map(function toPlaceholder() { return '?'; }).join(', ');
+  const stemRows = await query<DbRow>(
+    `SELECT * FROM music_stems WHERE generation_id IN (${placeholders})
+     ORDER BY CASE stem_role
+       WHEN 'rhythm' THEN 0 WHEN 'bass' THEN 1 WHEN 'melody' THEN 2 ELSE 3 END`,
+    ids,
+  );
+
+  const stemsByGeneration = new Map<string, MusicStem[]>();
+  for (const row of stemRows) {
+    const stem = rowToStem(row);
+    const bucket = stemsByGeneration.get(stem.generationId);
+    if (bucket) bucket.push(stem);
+    else stemsByGeneration.set(stem.generationId, [stem]);
+  }
+
+  return generations.map(function toGeneration(g): GenerationStems {
+    return {
+      id: g.id as string,
+      createdAt: g.created_at as string,
+      stems: stemsByGeneration.get(g.id as string) ?? [],
+    };
+  });
 }

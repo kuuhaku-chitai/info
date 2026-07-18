@@ -13,23 +13,38 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentStems, getLatestMusicState } from '@/lib/music/musicDb';
+import {
+  getCurrentStems,
+  getLatestMusicState,
+  getRecentGenerationsWithStems,
+} from '@/lib/music/musicDb';
 import type { StemManifest } from '@/types';
 
 // DBの現在状態を返すため、ビルド時の静的化を禁止する
 export const dynamic = 'force-dynamic';
 
+/**
+ * 記憶の地層としてmanifestに載せる世代数の上限。
+ * URLメタデータのみなのでレスポンスは軽いが、
+ * 章（Chapter）の選択肢として意味のある深さに絞る。
+ */
+const STRATA_GENERATIONS_LIMIT = 8;
+
 export async function GET() {
   try {
-    const [stems, musicState] = await Promise.all([
+    const [stems, musicState, generations] = await Promise.all([
       getCurrentStems(),
       getLatestMusicState(),
+      getRecentGenerationsWithStems(STRATA_GENERATIONS_LIMIT),
     ]);
 
     const manifest: StemManifest = {
       stems,
       musicState,
       generatedAt: stems[0]?.createdAt ?? null,
+      // 記憶の地層：直近N世代（現行世代も含む。クライアント側で
+      // 現行のgenerationIdを除外して「過去」として扱う）
+      generations,
     };
 
     return NextResponse.json(manifest, {

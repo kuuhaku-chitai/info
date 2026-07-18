@@ -79,6 +79,19 @@ export interface MusicStem {
 }
 
 /**
+ * 1世代分のstems一式（記憶の地層の1層）。
+ * createdAtは風化（経過時間）と時刻の共鳴（採取時間帯）の判定に使う。
+ */
+export interface GenerationStems {
+  /** 世代ID（= music_generation_log.id） */
+  id: string;
+  /** 採取日時（ISO 8601） */
+  createdAt: string;
+  /** この世代の擬似stems */
+  stems: MusicStem[];
+}
+
+/**
  * クライアントへ配信するアンサンブル一式。
  * /api/music/manifest のレスポンス。APIキー等の秘匿情報は一切含まない。
  */
@@ -89,6 +102,12 @@ export interface StemManifest {
   musicState: MusicState | null;
   /** 最終生成日時（ISO 8601）。クライアントはこれの変化で差し替えを検知する */
   generatedAt: string | null;
+  /**
+   * 記憶の地層：直近N世代（新しい順、現行世代を含む）。
+   * URLのメタデータのみ——音声データは章（Chapter）が選んだ時に初めて取得される。
+   * 既存クライアントはこのフィールドを無視しても従来どおり動く（後方互換）。
+   */
+  generations: GenerationStems[];
 }
 
 // ============================================

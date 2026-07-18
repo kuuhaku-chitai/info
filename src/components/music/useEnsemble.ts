@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StemManifest } from '@/types';
 import { EnsembleEngine } from './ensembleEngine';
 import type { PerformanceIntent } from './ensembleRules';
+import { visualizerBus, resetVisualizerBus } from './visualizerBus';
 
 export type EnsembleStatus =
   /** 静止（初期状態） */
@@ -77,6 +78,8 @@ export function useEnsemble(): {
     engineRef.current = null;
     generatedAtRef.current = null;
     writeEnergyVar(0);
+    // Canvas側はplaying=falseを見てフェードアウト→rAF停止する
+    resetVisualizerBus();
   }, []);
 
   const toggle = useCallback(
@@ -121,10 +124,17 @@ export function useEnsemble(): {
 
         generatedAtRef.current = manifest.generatedAt;
         setStatus('playing');
+        visualizerBus.playing = true;
+        visualizerBus.musicState = manifest.musicState;
 
-        // エネルギー → CSS変数（呼吸の速さで十分）
+        // エネルギー → CSS変数（既存の呼吸）＋ visualizerBus（Canvasの粒）
         energyTimerRef.current = setInterval(function energyTick() {
-          writeEnergyVar(engine.readEnergy());
+          const spectrum = engine.readSpectrum();
+          writeEnergyVar(spectrum.level);
+          visualizerBus.level = spectrum.level;
+          visualizerBus.low = spectrum.low;
+          visualizerBus.mid = spectrum.mid;
+          visualizerBus.high = spectrum.high;
         }, ENERGY_TICK_MS);
 
         // manifestの静かな見張り：新しい採取があればクロスフェード
@@ -135,6 +145,8 @@ export function useEnsemble(): {
             if (next.generatedAt && next.generatedAt !== generatedAtRef.current) {
               generatedAtRef.current = next.generatedAt;
               await engine.refresh(next);
+              // 新しい採取のMusicStateをCanvasにも伝える
+              visualizerBus.musicState = next.musicState;
             }
           })();
         }, MANIFEST_POLL_MS);

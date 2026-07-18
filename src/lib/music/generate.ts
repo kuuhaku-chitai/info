@@ -35,6 +35,7 @@ import {
   getActiveTemplates,
   replaceCurrentStems,
 } from './musicDb';
+import { pruneOldGenerations } from './retention';
 import type { MusicTriggerType, VersionGraphData } from '@/types';
 
 /** 生成結果。呼び出し側（API route / Cron）がHTTPステータスやログに変換する */
@@ -162,6 +163,16 @@ export async function runEnsembleGeneration(
       'アンサンブル再構築',
       `${trigger === 'auto' ? '自動' : '手動'} / ${stems.length} stems / ${Math.round(durationMs / 1000)}秒 / 本日${todaySuccessCount + 1}回目${filteredNote}`,
     );
+
+    // 保持方針（案A）：成功時にだけ、上限を超えた古い世代を風化させる。
+    // pruneOldGenerationsは例外を外へ投げない設計だが、
+    // 万一にも成功した生成を巻き込まないよう二重に守る
+    try {
+      await pruneOldGenerations();
+    } catch (error) {
+      console.error('[music] 剪定の想定外エラー:', error);
+    }
+
     return { status: 'success', generationId };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
