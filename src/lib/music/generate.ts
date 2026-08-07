@@ -20,8 +20,10 @@ import { notifyMusicEvent } from '@/lib/discord';
 import { computeMusicState, buildStemPromptPlans } from './memoryEngine';
 import {
   evaluateGenerationRequest,
+  isGenerationLockStale,
   jstDayStartUtcIso,
   matchesScheduleHour,
+  STALE_LOCK_MS,
 } from './guard';
 import { buildStemPassPlan, captureStems } from './lyria';
 import {
@@ -70,9 +72,14 @@ export async function runEnsembleGeneration(
   }
 
   const todaySuccessCount = await countTodaySuccess(jstDayStartUtcIso(new Date()));
+
+  // 孤児化した古いロックは「生成中でない」として扱う——下のacquireで奪い取る。
+  // これがないと、途中で落ちたWorkerが残したロックで管理画面が永久に詰まる
+  const lockIsStale =
+    settings.isGenerating && isGenerationLockStale(settings.updatedAt, new Date());
   const decision = evaluateGenerationRequest({
     mode: settings.mode,
-    isGenerating: settings.isGenerating,
+    isGenerating: settings.isGenerating && !lockIsStale,
     todaySuccessCount,
     trigger,
   });
@@ -87,8 +94,10 @@ export async function runEnsembleGeneration(
   }
 
   // --- ロック取得（楽観ロック。負けたら静かに退く） ---
+  // staleBeforeより前のロックは孤児とみなして奪い取る（自己修復）
   const lockStamp = new Date().toISOString();
-  const locked = await acquireGenerationLock(lockStamp);
+  const staleBeforeIso = new Date(Date.now() - STALE_LOCK_MS).toISOString();
+  const locked = await acquireGenerationLock(lockStamp, staleBeforeIso);
   if (!locked) {
     const reason = '別の生成が進行中（ロック競合）';
     await insertGenerationLog({

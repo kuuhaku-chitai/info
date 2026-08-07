@@ -107,16 +107,23 @@ export async function getMusicSettings(): Promise<MusicSettings> {
 
 /**
  * 生成ロックの取得を試みる。
- * 「is_generating = 0 の時だけ立てる」条件付きUPDATEの後、
- * 自分のスタンプ（ミリ秒精度のISO）が残っているか読み直して確認する
+ * 「is_generating = 0、または孤児化した古いロック（updated_at < staleBeforeIso）の時だけ立てる」
+ * 条件付きUPDATEの後、自分のスタンプ（ミリ秒精度のISO）が残っているか読み直して確認する
  * ——D1 REST越しでもトランザクション無しで競合を検出できる、最小の楽観ロック。
+ *
+ * staleBeforeIso より前のロックを奪い取れるのは、途中で落ちたWorkerが
+ * finallyを走らせられずロックを取り残す事故から自己修復するため（guard.ts STALE_LOCK_MS）。
  *
  * @returns ロックを取得できたらtrue
  */
-export async function acquireGenerationLock(lockStamp: string): Promise<boolean> {
+export async function acquireGenerationLock(
+  lockStamp: string,
+  staleBeforeIso: string,
+): Promise<boolean> {
   await execute(
-    'UPDATE music_settings SET is_generating = 1, updated_at = ? WHERE id = 1 AND is_generating = 0',
-    [lockStamp],
+    `UPDATE music_settings SET is_generating = 1, updated_at = ?
+     WHERE id = 1 AND (is_generating = 0 OR updated_at < ?)`,
+    [lockStamp, staleBeforeIso],
   );
   const row = await queryOne<DbRow>(
     'SELECT updated_at FROM music_settings WHERE id = 1 AND is_generating = 1',

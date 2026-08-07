@@ -35,8 +35,10 @@ function statusClassName(status: EnsembleStatus): string {
 }
 
 export function MusicModeToggle() {
-  const { status, toggle, setIntent } = useEnsemble();
+  const { status, toggle, setIntent, setVolume } = useEnsemble();
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  /** 聴き手の音量（0-2、1が等倍）。パネルを閉じても保持される */
+  const [volume, setVolumeState] = useState(2);
   // 演奏の傾きはここ（パネルの外）で保持する：
   // パネルを閉じて開き直してもスライダーの位置は消えない
   const [intent, setIntentState] = useState<PerformanceIntent>(neutralIntent);
@@ -58,6 +60,12 @@ export function MusicModeToggle() {
   function handleReset(): void {
     setIntentState(neutralIntent());
     setIntent(null);
+  }
+
+  /** 聴き手の音量（傾きとは独立。リセットでは変わらない） */
+  function handleVolumeChange(next: number): void {
+    setVolumeState(next);
+    setVolume(next);
   }
 
   return (
@@ -103,8 +111,10 @@ export function MusicModeToggle() {
           <PerformancePanel
             status={status}
             intent={intent}
+            volume={volume}
             onTogglePlay={toggle}
             onIntentChange={handleIntentChange}
+            onVolumeChange={handleVolumeChange}
             onReset={handleReset}
           />
         </>

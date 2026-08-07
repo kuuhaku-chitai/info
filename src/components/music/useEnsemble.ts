@@ -33,7 +33,12 @@ export type EnsembleStatus =
 const MANIFEST_POLL_MS = 5 * 60 * 1000;
 
 /** エネルギー → CSS変数の反映間隔。呼吸の速さに60fpsは要らない */
-const ENERGY_TICK_MS = 250;
+/**
+ * 帯域・波形のtick間隔。周波数への「リアルタイム」な反応のため50ms（20Hz）。
+ * getByteFrequencyData/TimeDomainDataは軽量で、Canvas側はさらに
+ * フレーム単位の易しみで滑らかにするため、コスト・見た目とも問題ない
+ */
+const ENERGY_TICK_MS = 50;
 
 async function fetchManifest(): Promise<StemManifest | null> {
   try {
@@ -55,11 +60,15 @@ export function useEnsemble(): {
   toggle: () => void;
   /** 聴き手の演奏意図を空間へ渡す（nullで手放す＝空間の記憶のままへ戻る） */
   setIntent: (intent: PerformanceIntent | null) => void;
+  /** 聴き手の音量（0-2、1が等倍）。ビジュアルには影響しない */
+  setVolume: (volume: number) => void;
 } {
   const [status, setStatus] = useState<EnsembleStatus>('idle');
   const engineRef = useRef<EnsembleEngine | null>(null);
   /** 再生前にスライダーが動いた場合も、開始時にその意図から鳴り始めるよう保持 */
   const intentRef = useRef<PerformanceIntent | null>(null);
+  /** 再生前に音量が動いた場合も、開始時にその音量で鳴り始めるよう保持 */
+  const volumeRef = useRef(1);
   const generatedAtRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const energyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -95,6 +104,9 @@ export function useEnsemble(): {
       setStatus('loading');
       const engine = new EnsembleEngine();
       engineRef.current = engine;
+      // 再生前に動かされたスライダー（傾き・音量）を開始時点から反映する
+      engine.setIntent(intentRef.current);
+      engine.setListenerVolume(volumeRef.current);
 
       void (async function startEnsemble() {
         const manifest = await fetchManifest();
@@ -127,7 +139,7 @@ export function useEnsemble(): {
         visualizerBus.playing = true;
         visualizerBus.musicState = manifest.musicState;
 
-        // エネルギー → CSS変数（既存の呼吸）＋ visualizerBus（Canvasの粒）
+        // エネルギー → CSS変数（既存の呼吸）＋ visualizerBus（Canvasの粒・波形線）
         energyTimerRef.current = setInterval(function energyTick() {
           const spectrum = engine.readSpectrum();
           writeEnergyVar(spectrum.level);
@@ -135,6 +147,8 @@ export function useEnsemble(): {
           visualizerBus.low = spectrum.low;
           visualizerBus.mid = spectrum.mid;
           visualizerBus.high = spectrum.high;
+          // 時間領域波形（バスの配列へ直接書き込み＝割り当てなし）
+          engine.readWaveform(visualizerBus.waveform);
         }, ENERGY_TICK_MS);
 
         // manifestの静かな見張り：新しい採取があればクロスフェード
@@ -163,10 +177,16 @@ export function useEnsemble(): {
     engineRef.current?.setIntent(intent);
   }, []);
 
+  /** 聴き手の音量。停止中も保持し、次の再生開始時に反映される */
+  const setVolume = useCallback(function setEnsembleVolume(volume: number) {
+    volumeRef.current = volume;
+    engineRef.current?.setListenerVolume(volume);
+  }, []);
+
   // ページを離れる時は必ず沈黙する（リーク防止：AudioContext・タイマーを残さない）
   useEffect(function bindUnmountCleanup() {
     return teardown;
   }, [teardown]);
 
-  return { status, toggle, setIntent };
+  return { status, toggle, setIntent, setVolume };
 }

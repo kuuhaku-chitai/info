@@ -27,7 +27,7 @@ import {
   getGenerationLogs,
   countTodaySuccess,
 } from './musicDb';
-import { jstDayStartUtcIso, DAILY_GENERATION_LIMIT } from './guard';
+import { jstDayStartUtcIso, DAILY_GENERATION_LIMIT, isGenerationLockStale } from './guard';
 import type {
   MusicSettings,
   MusicUpdateMode,
@@ -66,8 +66,13 @@ export async function fetchMusicAdminData(): Promise<MusicAdminData> {
     countTodaySuccess(jstDayStartUtcIso(new Date())),
     getEnv('DISCORD_WEBHOOK_URL'),
   ]);
+  // 孤児化した古いロックは「進行中」と表示せずボタンを再び押せるようにする。
+  // 実際の奪取はサーバ側（runEnsembleGeneration）が担うので、UIは表示だけを整える
+  const effectiveIsGenerating =
+    settings.isGenerating && !isGenerationLockStale(settings.updatedAt, new Date());
+
   return {
-    settings,
+    settings: { ...settings, isGenerating: effectiveIsGenerating },
     templates,
     logs,
     todayCount,

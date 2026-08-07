@@ -16,6 +16,18 @@ import type { MusicTriggerType, MusicUpdateMode } from '@/types';
 /** Lyria呼び出しの1日あたり上限（CLAUDE.md「Cost + Continuity Strategy」） */
 export const DAILY_GENERATION_LIMIT = 3;
 
+/**
+ * 生成ロックを「孤児（stale）」とみなすまでの時間（ミリ秒）。
+ *
+ * なぜ必要か：生成は必ずfinallyでロックを解放するが、Workerが採取の途中で
+ * 落ちる（Lyriaタイムアウト・デプロイ・クラッシュ）とfinallyが走らず、
+ * is_generating=1が永久に張り付いてしまう——実際、管理画面が「別の採取が進行中」で
+ * 詰まる原因はこれ。1回の採取は数分で終わり、Worker自体の実行時間上限も
+ * それより短いため、この時間を過ぎてなお立っているロックは「死んだWorkerのCompute置き土産」。
+ * その古いロックは無視して奪い取る（自己修復）。
+ */
+export const STALE_LOCK_MS = 5 * 60 * 1000;
+
 /** ガード判定への入力。呼び出し側がDBから読んで渡す */
 export interface GuardInput {
   /** 現在の更新モード */
@@ -58,6 +70,20 @@ export function evaluateGenerationRequest(input: GuardInput): GuardDecision {
     };
   }
   return { allowed: true };
+}
+
+/**
+ * ロックが孤児化（stale）しているかを判定する純粋関数。
+ *
+ * lockUpdatedAt はロック取得時に刻まれた music_settings.updated_at。
+ * これが STALE_LOCK_MS より前なら、そのロックは生きたWorkerではなく
+ * 途中で落ちたWorkerの置き土産——奪い取ってよい。
+ * 時刻が読めない（壊れた記録）場合も「古い」とみなし、復旧を優先する。
+ */
+export function isGenerationLockStale(lockUpdatedAt: string, now: Date): boolean {
+  const lockedMs = Date.parse(lockUpdatedAt);
+  if (Number.isNaN(lockedMs)) return true;
+  return now.getTime() - lockedMs >= STALE_LOCK_MS;
 }
 
 /**

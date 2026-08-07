@@ -682,6 +682,16 @@ export async function fetchVersionsByBranch(branchId: string): Promise<VersionRe
 }
 
 /** 画像・親IDを同梱した詳細を取得（詳細パネル・編集フォーム用） */
+/**
+ * 記憶の粒（Canvasビジュアライザー）用：ランダムな履歴画像の参照。
+ * 公開ページで使うため公開情報（URLとversionId）のみを返す。
+ */
+export async function fetchVersionImageRefs(): Promise<
+  Array<{ imageUrl: string; versionId: string }>
+> {
+  return db.getRandomVersionImageRefs(12);
+}
+
 export async function fetchVersionDetail(id: string): Promise<VersionRecordDetail | null> {
   const version = await db.getVersionById(id);
   if (!version) return null;

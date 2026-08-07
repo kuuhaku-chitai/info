@@ -49,8 +49,11 @@ interface PerformancePanelProps {
   status: EnsembleStatus;
   /** 現在の演奏の傾き（親が保持。パネルを閉じても消えない） */
   intent: PerformanceIntent;
+  /** 聴き手の音量（0-2、1が等倍。親が保持） */
+  volume: number;
   onTogglePlay: () => void;
   onIntentChange: (intent: PerformanceIntent) => void;
+  onVolumeChange: (volume: number) => void;
   /** リセット：全スライダーを中立（中間位置）へ戻す */
   onReset: () => void;
 }
@@ -58,8 +61,10 @@ interface PerformancePanelProps {
 export function PerformancePanel({
   status,
   intent,
+  volume,
   onTogglePlay,
   onIntentChange,
+  onVolumeChange,
   onReset,
 }: PerformancePanelProps) {
   function handleLayerChange(role: StemRole, value: number): void {
@@ -132,6 +137,22 @@ export function PerformancePanel({
             onChange={function onYuragi(e) { handleYuragiChange(Number(e.target.value)); }}
             className="void-slider"
             aria-label="揺らぎ（音量の満ち引き）"
+          />
+        </label>
+        {/* 音量：聴く環境の調整（演奏の傾きとは別物。0-2・1が等倍）。
+            analyserの後段なのでビジュアルには影響しない */}
+        <label className="flex items-center gap-3 pt-2 border-t border-edge/60">
+          <span className="text-[10px] text-ghost tracking-[0.2em] w-8 shrink-0">音量</span>
+          <input
+            type="range"
+            min={0}
+            max={3}
+            step={0.01}
+            value={volume}
+            onChange={function onVolume(e) { onVolumeChange(Number(e.target.value)); }}
+            className="void-slider"
+            aria-label="音量"
+            title="聴き手の音量（傾きスライダーとは独立）"
           />
         </label>
         {/* リセット：スライダーを中立（中間位置）へ戻し、空間自身の声に返す */}

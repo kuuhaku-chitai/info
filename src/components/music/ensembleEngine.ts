@@ -102,6 +102,14 @@ export class EnsembleEngine {
   private masterGain: GainNode | null = null;
   /** master直後の常設lowpass。普段は20kHz＝素通し。stillness/absenceでこもる */
   private masterFilter: BiquadFilterNode | null = null;
+  /**
+   * 聴き手の音量（analyserの後段）。0-2、1が等倍。
+   * ビジュアライザーはanalyserから読むため、音量を絞っても粒は生きたまま——
+   * 音を小さくしても空間の記憶の姿は変わらない
+   */
+  private listenerGain: GainNode | null = null;
+  /** start前に設定された音量を保持し、グラフ構築時に適用する */
+  private listenerVolume = 1;
   private analyser: AnalyserNode | null = null;
   /** 大変容のecho boostが残っている呼吸周期数（0=通常） */
   private echoBoostCycles = 0;
@@ -137,6 +145,19 @@ export class EnsembleEngine {
   }
 
   /**
+   * 聴き手の音量（0-2、1が等倍）。0.1秒の短いランプ＝スライダーに素直に応える
+   * （演奏の傾きと違い、音量は「聴く環境の調整」なので即応性を優先する）
+   */
+  setListenerVolume(volume: number): void {
+    // 上限3：パネルのスライダー範囲（0-3）に合わせる。過大入力はリミッターが守る
+    const clamped = Math.min(3, Math.max(0, volume));
+    this.listenerVolume = clamped;
+    if (this.ctx && this.listenerGain) {
+      this.listenerGain.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.1);
+    }
+  }
+
+  /**
    * manifestのstemsを取得・デコードして再生を開始する。
    * 必ずユーザー操作（クリック）から呼ぶこと——ブラウザの自動再生制約に従う。
    */
@@ -163,7 +184,21 @@ export class EnsembleEngine {
     analyser.smoothingTimeConstant = 0.9;
     master.connect(filter);
     filter.connect(analyser);
-    analyser.connect(ctx.destination);
+    // 聴き手の音量段はanalyserの後：音量を変えてもビジュアルの読みは不変。
+    // 音量>1の増幅でも割れないよう、最後に緩やかなリミッター
+    // （閾値-10dB・普段は素通しで色付けしない）を挟む
+    const listener = ctx.createGain();
+    listener.gain.value = this.listenerVolume;
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -10;
+    limiter.knee.value = 20;
+    limiter.ratio.value = 8;
+    limiter.attack.value = 0.005;
+    limiter.release.value = 0.25;
+    analyser.connect(listener);
+    listener.connect(limiter);
+    limiter.connect(ctx.destination);
+    this.listenerGain = listener;
     this.masterGain = master;
     this.masterFilter = filter;
     this.analyser = analyser;
@@ -249,6 +284,8 @@ export class EnsembleEngine {
         SWEEP_OPEN_SEC / 3,
       );
       this.echoBoostCycles = 2;
+      // 大変容の瞬間をビジュアライザーへ（斑の深化・輪郭出現のトリガー）
+      visualizerBus.majorEvent = { at: performance.now() };
     }
 
     this.applyPlan(this.nextPlan());
@@ -283,6 +320,18 @@ export class EnsembleEngine {
     return { ...bands, level: this.smoothedEnergy };
   }
 
+  /**
+   * 音の時間領域波形を渡された配列へ書き込む（波形線の形そのもの）。
+   * 配列は呼び出し側（visualizerBus）が使い回す＝tick毎の割り当てなし
+   */
+  readWaveform(target: Uint8Array<ArrayBuffer>): void {
+    if (!this.analyser) {
+      target.fill(128); // 中心線＝無音
+      return;
+    }
+    this.analyser.getByteTimeDomainData(target);
+  }
+
   /** すべてのリソースを即時解放する（unmount時の最終手段でも安全） */
   dispose(): void {
     if (this.cycleTimer !== null) {
@@ -304,6 +353,10 @@ export class EnsembleEngine {
     if (this.masterFilter) {
       this.masterFilter.disconnect();
       this.masterFilter = null;
+    }
+    if (this.listenerGain) {
+      this.listenerGain.disconnect();
+      this.listenerGain = null;
     }
     this.analyser = null;
     this.freqData = null;
@@ -401,11 +454,20 @@ export class EnsembleEngine {
       this.lastPlanIndex,
       intent,
     );
-    this.applyPlan({ ...replan, silenceBurst: null, rampSec: INTENT_RAMP_SEC });
+    // publishEvents=false：スライダー操作は音（echo voiceのゲイン）には効くが、
+    // ビジュアルの出来事（echoFlash＝輪郭・暈・斑のトリガー）は発行しない。
+    // これをtrueのままにすると、スライダーを動かすたびに毎回echoFlashが
+    // 新しいタイムスタンプで再発行され、Canvasが「新しい滲出」と誤検知して
+    // 輪郭が湧き続ける（＝操作タイミングに視覚が張り付く不具合）
+    this.applyPlan({ ...replan, silenceBurst: null, rampSec: INTENT_RAMP_SEC }, false);
   }
 
-  /** 計画を音声グラフへ反映する。すべて指数ランプ＝急な変化は存在しない */
-  private applyPlan(plan: MixPlan): void {
+  /**
+   * 計画を音声グラフへ反映する。すべて指数ランプ＝急な変化は存在しない。
+   * publishEvents：ビジュアライザーへ出来事（echoFlash）を発行してよいか。
+   * 呼吸周期・差し替えはtrue、setIntentの再適用はfalse（音だけ更新）。
+   */
+  private applyPlan(plan: MixPlan, publishEvents = true): void {
     const ctx = this.ctx;
     const master = this.masterGain;
     if (!ctx || !master) return;
@@ -453,7 +515,7 @@ export class EnsembleEngine {
     }
 
     // 記憶の滲出：現在の計画で休んでいる層に、章が選んだ過去の声を重ねるか判定
-    this.applyEchoTargets(plan, tc);
+    this.applyEchoTargets(plan, tc, publishEvents);
   }
 
   // ============================================
@@ -579,7 +641,11 @@ export class EnsembleEngine {
    * 判定は純粋関数（decideEchoSurfacing、周期番号で決定的）なので、
    * intent変更時の再適用でも同じ周期なら同じ判定になる。
    */
-  private applyEchoTargets(plan: MixPlan, timeConstant: number): void {
+  private applyEchoTargets(
+    plan: MixPlan,
+    timeConstant: number,
+    publishFlash: boolean,
+  ): void {
     const ctx = this.ctx;
     if (!ctx || !this.chapterPlan || this.echoVoices.length === 0) return;
 
@@ -604,9 +670,10 @@ export class EnsembleEngine {
       voice.gain.gain.setTargetAtTime(target, now, timeConstant);
     }
 
-    // 記憶が実際に滲んだ瞬間をビジュアライザーへ（残像の暈のトリガー）。
-    // 風化係数を添える——古い記憶ほど淡い残像として描かれる
-    if (surfaced.length > 0) {
+    // 記憶が実際に滲んだ瞬間をビジュアライザーへ（残像の暈・輪郭のトリガー）。
+    // publishFlash=falseのsetIntent経路では発行しない＝スライダー操作では
+    // 視覚の出来事が湧かない。風化係数を添える——古い記憶ほど淡い残像として描かれる
+    if (publishFlash && surfaced.length > 0) {
       visualizerBus.echoFlash = {
         at: performance.now(),
         roles: surfaced,

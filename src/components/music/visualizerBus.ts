@@ -58,6 +58,15 @@ interface VisualizerState {
   echoFlash: EchoFlash | null;
   /** 直近の欠落の一瞬（nullなら斑は定常のまま） */
   silenceBurst: SilenceBurstEvent | null;
+  /**
+   * 音の時間領域波形（128サンプル・128が無音の中心線）。
+   * 波形線の形そのものになる。割り当てを避けるため配列は使い回し。
+   * 型はUint8Array<ArrayBuffer>：AnalyserNodeのAPIがSharedArrayBuffer裏付けの
+   * 配列を受け付けないため（TS 5.7+のジェネリック型付き配列）
+   */
+  waveform: Uint8Array<ArrayBuffer>;
+  /** 大変容の瞬間（斑の深化・輪郭出現などの出来事トリガー） */
+  majorEvent: { at: number } | null;
   /** 直近フレームのCanvas処理時間ms（性能予算8msの監視用。書き手はMemoryCanvas） */
   frameMs: number;
 }
@@ -73,6 +82,8 @@ export const visualizerBus: VisualizerState = {
   viewport: { x: 0, y: 0, zoom: 1 },
   echoFlash: null,
   silenceBurst: null,
+  waveform: new Uint8Array(128).fill(128),
+  majorEvent: null,
   frameMs: 0,
 };
 
@@ -85,6 +96,8 @@ export function resetVisualizerBus(): void {
   visualizerBus.high = 0;
   visualizerBus.echoFlash = null;
   visualizerBus.silenceBurst = null;
+  visualizerBus.waveform.fill(128); // 中心線＝無音
+  visualizerBus.majorEvent = null;
   visualizerBus.frameMs = 0;
 }
 
@@ -130,7 +143,7 @@ export function splitBands(
   return {
     level: sumAll / (n * 255),
     low: sumLow / (LOW_END * 255),
-    mid: sumMid / (Math.max(1, MID_END - LOW_END) * 255),
-    high: sumHigh / (highCount * 255),
+    mid: sumMid / (Math.max(1, MID_END - LOW_END) * 255) * 1.15,
+    high: sumHigh / (highCount * 255) * 1.1,
   };
 }

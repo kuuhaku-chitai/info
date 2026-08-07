@@ -12,6 +12,7 @@ import { HistoryView } from '@/components/history/HistoryView';
 import { MusicModeToggle } from '@/components/music/MusicModeToggle';
 import { DesktopNav } from '@/components/ui/DesktopNav';
 import { MobileMenu } from '@/components/ui/MobileMenu';
+import { WeatherAtmosphereClient } from '@/components/weather';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,12 @@ export default async function HistoryPage() {
           <p className="text-ghost text-[10px] mt-3 pointer-events-none">まだ記録された変容はありません。</p>
         )}
       </header>
+      {/*
+        天候演出 - 背景レイヤー
+        自然現象をCSSアニメーションで表現。
+        中央のセーフゾーンを避け、画面端で静かに展開。
+      */}
+      <WeatherAtmosphereClient />
 
       {/* music Mode — 「音」一文字が右上に佇む（空間の記憶を聴く） */}
       <MusicModeToggle />

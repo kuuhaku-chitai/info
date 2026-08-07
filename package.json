@@ -21,7 +21,8 @@
     "setup": "pnpm run docker:up && pnpm run db:migrate",
     "build:worker": "pnpm dlx @opennextjs/cloudflare build && rm -rf .open-next/assets/assets/glb",
     "deploy": "pnpm run build:worker && pnpm dlx wrangler deploy --env=''",
-    "deploy:preview": "pnpm run build:worker && pnpm dlx wrangler deploy --env preview"
+    "deploy:preview": "pnpm run build:worker && pnpm dlx wrangler deploy --env preview",
+    "test:music": "node tests/music/run.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.4.2",

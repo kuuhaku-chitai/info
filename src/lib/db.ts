@@ -1283,6 +1283,25 @@ export async function getImagesByVersionId(versionId: string): Promise<VersionRe
   return rows.map(rowToVersionImage);
 }
 
+/**
+ * 記憶の粒（ビジュアライザー）用：投稿（version）ごとに1枚ずつ画像参照を返す。
+ * GROUP BYで1投稿1行に畳むため、画像の多い投稿に偏らず全投稿が候補に入る
+ * ——輪郭が「一部の投稿だけ」に偏るのを防ぐ（クライアント側は輪番で満遍なく出す）。
+ */
+export async function getRandomVersionImageRefs(
+  limit = 24,
+): Promise<Array<{ imageUrl: string; versionId: string }>> {
+  const rows = await query(
+    `SELECT image_url, version_id FROM version_record_images
+     GROUP BY version_id ORDER BY RANDOM() LIMIT ?`,
+    [limit]
+  );
+  return rows.map((row) => ({
+    imageUrl: row.image_url as string,
+    versionId: row.version_id as string,
+  }));
+}
+
 export async function createVersionImage(
   image: Omit<VersionRecordImage, 'createdAt'> & { createdAt?: string }
 ): Promise<void> {
